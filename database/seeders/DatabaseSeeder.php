@@ -48,9 +48,14 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Gudang Utama', 'is_active' => true],
         );
 
-        CashAccount::query()->updateOrCreate(
+        CashAccount::query()->firstOrCreate(
             ['code' => 'KAS-KANTOR'],
             ['name' => 'Kas Kantor', 'type' => 'cash', 'balance' => 0, 'is_active' => true],
+        );
+
+        CashAccount::query()->firstOrCreate(
+            ['code' => 'BANK'],
+            ['name' => 'Bank', 'type' => 'bank', 'balance' => 0, 'is_active' => true],
         );
     }
 }

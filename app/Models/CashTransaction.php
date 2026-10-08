@@ -2,11 +2,12 @@
 
 namespace App\Models;
 
+use App\ExpenseCategory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['cash_account_id', 'transaction_date', 'direction', 'amount', 'source_type', 'source_id', 'reference_number', 'description', 'user_id'])]
+#[Fillable(['cash_account_id', 'transaction_date', 'direction', 'expense_category', 'amount', 'source_type', 'source_id', 'reference_number', 'description', 'user_id'])]
 class CashTransaction extends Model
 {
     use HasFactory;
@@ -15,6 +16,6 @@ class CashTransaction extends Model
 
     protected function casts(): array
     {
-        return ['transaction_date' => 'date', 'amount' => 'decimal:2', 'created_at' => 'datetime'];
+        return ['transaction_date' => 'date', 'expense_category' => ExpenseCategory::class, 'amount' => 'decimal:2', 'created_at' => 'datetime'];
     }
 }

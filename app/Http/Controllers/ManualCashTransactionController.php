@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\ExpenseCategory;
 use App\Http\Requests\StoreManualCashTransactionRequest;
 use App\Models\CashAccount;
 use App\Models\CashTransaction;
@@ -18,6 +19,7 @@ class ManualCashTransactionController extends Controller
     {
         return view('finance.manual-transaction', [
             'accounts' => CashAccount::query()->where('is_active', true)->orderBy('name')->get(),
+            'expenseCategories' => ExpenseCategory::cases(),
         ]);
     }
 
@@ -36,6 +38,7 @@ class ManualCashTransactionController extends Controller
                 'cash_account_id' => $account->id,
                 'transaction_date' => $data['transaction_date'],
                 'direction' => $data['direction'],
+                'expense_category' => $data['expense_category'] ?? null,
                 'amount' => $data['amount'],
                 'reference_number' => $numbers->next($data['direction'] === 'in' ? 'CASH-IN' : 'CASH-OUT'),
                 'description' => $data['description'],

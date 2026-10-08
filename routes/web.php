@@ -21,8 +21,10 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseOrderController;
+use App\Http\Controllers\PurchaseReceiptInvoiceController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SaleController;
+use App\Http\Controllers\SalesInvoiceController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\SupplierPaymentController;
 use Illuminate\Support\Facades\Route;
@@ -95,6 +97,7 @@ Route::middleware('auth')->group(function (): void {
     });
 
     Route::get('/purchasing', [PurchaseOrderController::class, 'index'])->middleware('permission:purchasing.view')->name('purchasing.index');
+    Route::get('/purchasing/receipts/{goodsReceipt}/invoice', PurchaseReceiptInvoiceController::class)->middleware('permission:purchasing.view')->name('purchasing.receipts.invoice');
     Route::middleware('permission:purchasing.manage')->group(function (): void {
         Route::get('/purchasing/create', [PurchaseOrderController::class, 'create'])->name('purchasing.create');
         Route::post('/purchasing', [PurchaseOrderController::class, 'store'])->name('purchasing.store');
@@ -104,6 +107,7 @@ Route::middleware('auth')->group(function (): void {
     });
 
     Route::get('/sales', [SaleController::class, 'index'])->middleware('permission:sales.view')->name('sales.index');
+    Route::get('/sales/{sale}/invoice', SalesInvoiceController::class)->middleware('permission:sales.view')->name('sales.invoice');
     Route::middleware('permission:sales.manage')->group(function (): void {
         Route::get('/sales/create', [SaleController::class, 'create'])->name('sales.create');
         Route::post('/sales', [SaleController::class, 'store'])->name('sales.store');

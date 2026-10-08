@@ -55,4 +55,24 @@ document.addEventListener('DOMContentLoaded', () => {
         paymentType?.addEventListener('change', updatePaymentFields);
         updatePaymentFields();
     });
+
+    document.querySelectorAll('[data-cash-transaction-form]').forEach((form) => {
+        const direction = form.querySelector('[data-cash-direction]');
+        const categoryFields = form.querySelector('[data-expense-category-fields]');
+        const category = form.querySelector('[data-expense-category]');
+
+        const updateExpenseCategory = () => {
+            const isExpense = direction?.value === 'out';
+
+            categoryFields?.classList.toggle('hidden', ! isExpense);
+
+            if (category) {
+                category.disabled = ! isExpense;
+                category.required = isExpense;
+            }
+        };
+
+        direction?.addEventListener('change', updateExpenseCategory);
+        updateExpenseCategory();
+    });
 });

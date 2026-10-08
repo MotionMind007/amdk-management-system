@@ -39,10 +39,18 @@
                     <select id="cash_account_id" name="cash_account_id" data-cash-account class="min-h-11 rounded-lg border border-slate-300 px-3 text-sm">
                         <option value="">Pilih akun kas atau bank</option>
                         @foreach ($cashAccounts as $account)
-                            <option value="{{ $account->id }}" @selected((int) old('cash_account_id') === $account->id)>{{ $account->name }}</option>
+                            <option value="{{ $account->id }}" @selected((int) old('cash_account_id') === $account->id)>{{ $account->name }} &mdash; Saldo Rp {{ number_format((float) $account->balance, 0, ',', '.') }}</option>
                         @endforeach
                     </select>
                     @error('cash_account_id')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
+                    <div class="mt-2 grid gap-2 sm:grid-cols-2">
+                        @foreach ($cashAccounts as $account)
+                            <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                                <p class="text-xs font-medium text-slate-500">{{ $account->type === 'bank' ? 'Saldo Bank' : 'Saldo Kas Kantor' }}</p>
+                                <p class="mt-1 text-sm font-semibold text-slate-900">Rp {{ number_format((float) $account->balance, 0, ',', '.') }}</p>
+                            </div>
+                        @endforeach
+                    </div>
                 </div>
                 <div data-credit-fields @class(['grid gap-1.5', 'hidden' => $selectedPaymentType !== 'credit'])>
                     <x-ui.input label="Jatuh Tempo" name="due_date" type="date" data-due-date />
