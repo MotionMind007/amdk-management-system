@@ -14,7 +14,7 @@ class AuditLogController extends Controller
         $module = $request->string('module')->trim()->toString();
         $action = $request->string('action')->trim()->toString();
         $logs = AuditLog::query()
-            ->with('user:id,name')
+            ->with('user:id,name,role')
             ->when($module !== '', fn ($query) => $query->where('module', $module))
             ->when($action !== '', fn ($query) => $query->where('action', $action))
             ->latest('created_at')

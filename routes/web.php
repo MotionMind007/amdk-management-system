@@ -1,11 +1,14 @@
 <?php
 
 use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\OpeningStockController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\CustomerPaymentController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\GoodsReceiptController;
 use App\Http\Controllers\InventoryAdjustmentController;
@@ -16,6 +19,7 @@ use App\Http\Controllers\ModuleHubController;
 use App\Http\Controllers\ProductCompositionController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductionController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SaleController;
@@ -34,6 +38,11 @@ Route::middleware('guest')->group(function (): void {
 
 Route::middleware('auth')->group(function (): void {
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
+    Route::get('/profile', ProfileController::class)->name('profile.show');
+    Route::get('/account/password', [PasswordController::class, 'edit'])->name('account.password.edit');
+    Route::put('/account/password', [PasswordController::class, 'update'])
+        ->middleware('throttle:6,1')
+        ->name('account.password.update');
     Route::get('/modules', ModuleHubController::class)->name('modules.index');
     Route::get('/dashboard', DashboardController::class)
         ->middleware('permission:dashboard.view')
@@ -66,12 +75,20 @@ Route::middleware('auth')->group(function (): void {
     Route::prefix('admin')->name('admin.')->middleware('permission:system.manage')->group(function (): void {
         Route::resource('users', UserController::class)->except('show');
         Route::get('/audit-logs', AuditLogController::class)->name('audit-logs.index');
+        Route::resource('opening-stocks', OpeningStockController::class)->except(['show', 'destroy']);
+        Route::post('/opening-stocks/{openingStock}/post', [OpeningStockController::class, 'post'])->name('opening-stocks.post');
     });
+
+    Route::resource('employees', EmployeeController::class)
+        ->except(['show', 'destroy'])
+        ->middleware('permission:system.manage');
 
     Route::get('/production', [ProductionController::class, 'index'])->middleware('permission:production.view')->name('production.index');
     Route::middleware('permission:production.manage')->group(function (): void {
         Route::get('/production/create', [ProductionController::class, 'create'])->name('production.create');
         Route::post('/production', [ProductionController::class, 'store'])->name('production.store');
+        Route::get('/production/{production}/edit', [ProductionController::class, 'edit'])->name('production.edit');
+        Route::put('/production/{production}', [ProductionController::class, 'update'])->name('production.update');
         Route::post('/production/{production}/post', [ProductionController::class, 'post'])->name('production.post');
         Route::get('/production/compositions/{product}', [ProductCompositionController::class, 'edit'])->name('production.compositions.edit');
         Route::put('/production/compositions/{product}', [ProductCompositionController::class, 'update'])->name('production.compositions.update');

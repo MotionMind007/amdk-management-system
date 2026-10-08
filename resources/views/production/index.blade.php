@@ -45,10 +45,17 @@
                             <td class="px-5 py-4 text-right">
                                 @if ($production->status === 'posted')
                                     <span class="text-xs text-slate-400">Final</span>
-                                @elseif ($missingComposition)
-                                    <a href="{{ route('production.compositions.edit', $missingComposition->product) }}" class="inline-flex min-h-11 items-center rounded-lg border border-amber-300 bg-amber-50 px-3 text-sm font-semibold text-amber-800">Atur komposisi dulu</a>
+                                @elseif (auth()->user()->hasPermission('production.manage'))
+                                    <div class="flex flex-wrap justify-end gap-2">
+                                        <a href="{{ route('production.edit', $production) }}" class="inline-flex min-h-11 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Edit</a>
+                                        @if ($missingComposition)
+                                            <a href="{{ route('production.compositions.edit', $missingComposition->product) }}" class="inline-flex min-h-11 items-center rounded-lg border border-amber-300 bg-amber-50 px-3 text-sm font-semibold text-amber-800">Atur komposisi dulu</a>
+                                        @else
+                                            <form method="POST" action="{{ route('production.post', $production) }}">@csrf<x-ui.button type="submit">Posting</x-ui.button></form>
+                                        @endif
+                                    </div>
                                 @else
-                                    <form method="POST" action="{{ route('production.post', $production) }}">@csrf<x-ui.button type="submit">Posting</x-ui.button></form>
+                                    <span class="text-xs text-slate-400">Draft</span>
                                 @endif
                             </td>
                         </tr>

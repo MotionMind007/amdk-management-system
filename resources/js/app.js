@@ -27,4 +27,32 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+
+    document.querySelectorAll('[data-payment-form]').forEach((form) => {
+        const paymentType = form.querySelector('[data-payment-type]');
+        const creditFields = form.querySelector('[data-credit-fields]');
+        const cashFields = form.querySelector('[data-cash-fields]');
+        const dueDate = form.querySelector('[data-due-date]');
+        const cashAccount = form.querySelector('[data-cash-account]');
+
+        const updatePaymentFields = () => {
+            const isCredit = paymentType?.value === 'credit';
+
+            creditFields?.classList.toggle('hidden', ! isCredit);
+            cashFields?.classList.toggle('hidden', isCredit);
+
+            if (dueDate) {
+                dueDate.disabled = ! isCredit;
+                dueDate.required = isCredit;
+            }
+
+            if (cashAccount) {
+                cashAccount.disabled = isCredit;
+                cashAccount.required = ! isCredit;
+            }
+        };
+
+        paymentType?.addEventListener('change', updatePaymentFields);
+        updatePaymentFields();
+    });
 });

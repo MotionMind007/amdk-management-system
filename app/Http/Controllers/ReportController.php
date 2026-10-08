@@ -21,13 +21,13 @@ class ReportController extends Controller
         return view('reports.index', [
             'startDate' => $startDate,
             'endDate' => $endDate,
-            'salesTotal' => Sale::query()->whereNot('status', 'draft')->whereBetween('sale_date', [$startDate, $endDate])->sum('total'),
-            'purchaseTotal' => GoodsReceipt::query()->whereBetween('receipt_date', [$startDate, $endDate])->sum('total'),
-            'cashIn' => CashTransaction::query()->where('direction', 'in')->whereBetween('transaction_date', [$startDate, $endDate])->sum('amount'),
-            'cashOut' => CashTransaction::query()->where('direction', 'out')->whereBetween('transaction_date', [$startDate, $endDate])->sum('amount'),
+            'salesTotal' => Sale::query()->whereNot('status', 'draft')->whereDate('sale_date', '>=', $startDate)->whereDate('sale_date', '<=', $endDate)->sum('total'),
+            'purchaseTotal' => GoodsReceipt::query()->whereDate('receipt_date', '>=', $startDate)->whereDate('receipt_date', '<=', $endDate)->sum('total'),
+            'cashIn' => CashTransaction::query()->where('direction', 'in')->whereDate('transaction_date', '>=', $startDate)->whereDate('transaction_date', '<=', $endDate)->sum('amount'),
+            'cashOut' => CashTransaction::query()->where('direction', 'out')->whereDate('transaction_date', '>=', $startDate)->whereDate('transaction_date', '<=', $endDate)->sum('amount'),
             'receivableTotal' => Sale::query()->sum('outstanding_amount'),
             'payableTotal' => PurchaseOrder::query()->sum('outstanding_amount'),
-            'productionTotal' => DailyProductionItem::query()->whereHas('production', fn ($query) => $query->where('status', 'posted')->whereBetween('production_date', [$startDate, $endDate]))->sum('quantity'),
+            'productionTotal' => DailyProductionItem::query()->whereHas('production', fn ($query) => $query->where('status', 'posted')->whereDate('production_date', '>=', $startDate)->whereDate('production_date', '<=', $endDate))->sum('quantity'),
         ]);
     }
 }

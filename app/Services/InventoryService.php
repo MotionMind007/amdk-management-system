@@ -8,6 +8,7 @@ use App\Models\StockMovement;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\StockMovementType;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -23,8 +24,9 @@ class InventoryService
         ?Model $source = null,
         ?string $referenceNumber = null,
         ?string $notes = null,
+        ?CarbonInterface $occurredAt = null,
     ): StockMovement {
-        return $this->move($product, $warehouse, $quantity, 'in', $type, $user, $source, $referenceNumber, $notes);
+        return $this->move($product, $warehouse, $quantity, 'in', $type, $user, $source, $referenceNumber, $notes, $occurredAt);
     }
 
     public function decrease(
@@ -36,8 +38,9 @@ class InventoryService
         ?Model $source = null,
         ?string $referenceNumber = null,
         ?string $notes = null,
+        ?CarbonInterface $occurredAt = null,
     ): StockMovement {
-        return $this->move($product, $warehouse, $quantity, 'out', $type, $user, $source, $referenceNumber, $notes);
+        return $this->move($product, $warehouse, $quantity, 'out', $type, $user, $source, $referenceNumber, $notes, $occurredAt);
     }
 
     private function move(
@@ -50,12 +53,13 @@ class InventoryService
         ?Model $source,
         ?string $referenceNumber,
         ?string $notes,
+        ?CarbonInterface $occurredAt,
     ): StockMovement {
         if (! is_numeric($quantity) || (float) $quantity <= 0) {
             throw ValidationException::withMessages(['quantity' => 'Jumlah stok harus lebih besar dari nol.']);
         }
 
-        return DB::transaction(function () use ($product, $warehouse, $quantity, $direction, $type, $user, $source, $referenceNumber, $notes): StockMovement {
+        return DB::transaction(function () use ($product, $warehouse, $quantity, $direction, $type, $user, $source, $referenceNumber, $notes, $occurredAt): StockMovement {
             StockBalance::query()->firstOrCreate([
                 'product_id' => $product->id,
                 'warehouse_id' => $warehouse->id,
@@ -96,7 +100,7 @@ class InventoryService
                 'source_id' => $source?->getKey(),
                 'reference_number' => $referenceNumber,
                 'notes' => $notes,
-                'occurred_at' => now(),
+                'occurred_at' => $occurredAt ?? now(),
             ]);
         });
     }

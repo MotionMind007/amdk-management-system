@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\CashAccount;
 use App\Models\Sale;
 use App\Models\User;
 use App\StockMovementType;
@@ -10,7 +11,10 @@ use Illuminate\Validation\ValidationException;
 
 class SalesService
 {
-    public function __construct(private InventoryService $inventoryService) {}
+    public function __construct(
+        private InventoryService $inventoryService,
+        private PaymentService $paymentService,
+    ) {}
 
     public function post(Sale $sale, User $user): Sale
     {
@@ -34,6 +38,19 @@ class SalesService
             }
 
             $sale->update(['status' => 'unpaid', 'total' => $total, 'outstanding_amount' => $total, 'posted_at' => now()]);
+
+            if ($sale->payment_type === 'cash') {
+                $cashAccount = CashAccount::query()
+                    ->whereKey($sale->cash_account_id)
+                    ->where('is_active', true)
+                    ->first();
+
+                if ($cashAccount === null) {
+                    throw ValidationException::withMessages(['cash_account_id' => 'Akun kas atau bank untuk penjualan cash tidak tersedia.']);
+                }
+
+                $this->paymentService->receiveCustomerPayment($sale, $cashAccount, $total, $user);
+            }
 
             return $sale->fresh('items');
         });

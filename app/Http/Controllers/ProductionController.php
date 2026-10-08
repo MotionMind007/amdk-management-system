@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ProductionRequest;
 use App\Models\DailyProduction;
 use App\Models\Product;
 use App\Models\Warehouse;
@@ -12,6 +13,7 @@ use App\Services\ProductionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class ProductionController extends Controller
@@ -37,17 +39,15 @@ class ProductionController extends Controller
     public function create(): View
     {
         return view('production.create', [
+            'production' => new DailyProduction,
             'products' => Product::query()->where('type', ProductType::FinishedGood)->where('is_active', true)->orderBy('name')->get(),
             'warehouses' => Warehouse::query()->where('is_active', true)->orderBy('name')->get(),
         ]);
     }
 
-    public function store(Request $request, DocumentNumberService $numberService, AuditService $auditService): RedirectResponse
+    public function store(ProductionRequest $request, DocumentNumberService $numberService, AuditService $auditService): RedirectResponse
     {
-        $validated = $request->validate([
-            'production_date' => ['required', 'date'], 'warehouse_id' => ['required', 'exists:warehouses,id'], 'notes' => ['nullable', 'string', 'max:2000'],
-            'items' => ['required', 'array', 'min:1'], 'items.*.product_id' => ['required', 'distinct', 'exists:products,id'], 'items.*.quantity' => ['required', 'numeric', 'gt:0'], 'items.*.rejected_quantity' => ['nullable', 'numeric', 'min:0'],
-        ]);
+        $validated = $request->validated();
 
         $production = DB::transaction(function () use ($request, $validated, $numberService, $auditService): DailyProduction {
             $production = DailyProduction::create(['number' => $numberService->next('PROD'), 'production_date' => $validated['production_date'], 'warehouse_id' => $validated['warehouse_id'], 'status' => 'draft', 'notes' => $validated['notes'] ?? null, 'created_by' => $request->user()->id]);
@@ -60,6 +60,48 @@ class ProductionController extends Controller
         });
 
         return redirect()->route('production.index')->with('success', "Rekap {$production->number} disimpan sebagai draft.");
+    }
+
+    public function edit(DailyProduction $production): View
+    {
+        abort_unless($production->status === 'draft', 404);
+
+        $production->load('items');
+
+        return view('production.create', [
+            'production' => $production,
+            'products' => Product::query()->where('type', ProductType::FinishedGood)->where('is_active', true)->orderBy('name')->get(),
+            'warehouses' => Warehouse::query()->where('is_active', true)->orderBy('name')->get(),
+        ]);
+    }
+
+    public function update(ProductionRequest $request, DailyProduction $production, AuditService $auditService): RedirectResponse
+    {
+        $validated = $request->validated();
+
+        DB::transaction(function () use ($request, $production, $validated, $auditService): void {
+            $production = DailyProduction::query()->whereKey($production->getKey())->lockForUpdate()->firstOrFail();
+
+            if ($production->status !== 'draft') {
+                throw ValidationException::withMessages(['status' => 'Hanya rekap produksi draft yang dapat diedit.']);
+            }
+
+            $oldValues = $production->load('items')->toArray();
+            $production->update([
+                'production_date' => $validated['production_date'],
+                'warehouse_id' => $validated['warehouse_id'],
+                'notes' => $validated['notes'] ?? null,
+            ]);
+            $production->items()->delete();
+
+            foreach ($validated['items'] as $item) {
+                $production->items()->create($item);
+            }
+
+            $auditService->record($request, 'UPDATE', 'Production', $production, $oldValues, $production->load('items')->toArray());
+        });
+
+        return redirect()->route('production.index')->with('success', "Rekap {$production->number} berhasil diperbarui.");
     }
 
     public function post(Request $request, DailyProduction $production, ProductionService $productionService, AuditService $auditService): RedirectResponse

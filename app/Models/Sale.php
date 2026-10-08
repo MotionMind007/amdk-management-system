@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['number', 'customer_id', 'warehouse_id', 'sale_date', 'due_date', 'status', 'total', 'paid_amount', 'outstanding_amount', 'notes', 'created_by', 'posted_at'])]
+#[Fillable(['number', 'customer_id', 'warehouse_id', 'sale_date', 'payment_type', 'due_date', 'cash_account_id', 'status', 'total', 'paid_amount', 'outstanding_amount', 'notes', 'created_by', 'posted_at'])]
 class Sale extends Model
 {
     use HasFactory;
@@ -31,5 +31,10 @@ class Sale extends Model
     public function warehouse(): BelongsTo
     {
         return $this->belongsTo(Warehouse::class);
+    }
+
+    public function cashAccount(): BelongsTo
+    {
+        return $this->belongsTo(CashAccount::class);
     }
 }

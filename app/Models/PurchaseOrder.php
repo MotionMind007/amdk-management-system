@@ -8,14 +8,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['number', 'supplier_id', 'warehouse_id', 'order_date', 'expected_date', 'status', 'total', 'paid_amount', 'outstanding_amount', 'notes', 'created_by', 'approved_by', 'approved_at'])]
+#[Fillable(['number', 'supplier_id', 'warehouse_id', 'order_date', 'expected_date', 'payment_type', 'due_date', 'cash_account_id', 'status', 'total', 'paid_amount', 'outstanding_amount', 'notes', 'created_by', 'approved_by', 'approved_at'])]
 class PurchaseOrder extends Model
 {
     use HasFactory;
 
     protected function casts(): array
     {
-        return ['order_date' => 'date', 'expected_date' => 'date', 'total' => 'decimal:2', 'paid_amount' => 'decimal:2', 'outstanding_amount' => 'decimal:2', 'approved_at' => 'datetime'];
+        return ['order_date' => 'date', 'expected_date' => 'date', 'due_date' => 'date', 'total' => 'decimal:2', 'paid_amount' => 'decimal:2', 'outstanding_amount' => 'decimal:2', 'approved_at' => 'datetime'];
     }
 
     public function items(): HasMany
@@ -31,5 +31,10 @@ class PurchaseOrder extends Model
     public function warehouse(): BelongsTo
     {
         return $this->belongsTo(Warehouse::class);
+    }
+
+    public function cashAccount(): BelongsTo
+    {
+        return $this->belongsTo(CashAccount::class);
     }
 }

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\SaleRequest;
+use App\Models\CashAccount;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Sale;
@@ -26,14 +28,19 @@ class SaleController extends Controller
 
     public function create(): View
     {
-        return view('sales.create', ['customers' => Customer::query()->where('status', 'active')->orderBy('name')->get(), 'products' => Product::query()->where('type', ProductType::FinishedGood)->where('is_active', true)->with('unit')->orderBy('name')->get(), 'warehouses' => Warehouse::query()->where('is_active', true)->get()]);
+        return view('sales.create', [
+            'customers' => Customer::query()->where('status', 'active')->orderBy('name')->get(),
+            'products' => Product::query()->where('type', ProductType::FinishedGood)->where('is_active', true)->with('unit')->orderBy('name')->get(),
+            'warehouses' => Warehouse::query()->where('is_active', true)->get(),
+            'cashAccounts' => CashAccount::query()->where('is_active', true)->orderBy('name')->get(),
+        ]);
     }
 
-    public function store(Request $request, DocumentNumberService $numbers, AuditService $audit): RedirectResponse
+    public function store(SaleRequest $request, DocumentNumberService $numbers, AuditService $audit): RedirectResponse
     {
-        $data = $request->validate(['customer_id' => ['required', 'exists:customers,id'], 'warehouse_id' => ['required', 'exists:warehouses,id'], 'sale_date' => ['required', 'date'], 'due_date' => ['nullable', 'date', 'after_or_equal:sale_date'], 'notes' => ['nullable', 'string', 'max:2000'], 'items' => ['required', 'array', 'min:1'], 'items.*.product_id' => ['required', 'distinct', 'exists:products,id'], 'items.*.quantity' => ['required', 'numeric', 'gt:0'], 'items.*.unit_price' => ['required', 'numeric', 'min:0']]);
+        $data = $request->validated();
         $sale = DB::transaction(function () use ($request, $data, $numbers, $audit): Sale {
-            $sale = Sale::create(['number' => $numbers->next('INV'), 'customer_id' => $data['customer_id'], 'warehouse_id' => $data['warehouse_id'], 'sale_date' => $data['sale_date'], 'due_date' => $data['due_date'] ?? null, 'status' => 'draft', 'notes' => $data['notes'] ?? null, 'created_by' => $request->user()->id]);
+            $sale = Sale::create(['number' => $numbers->next('INV'), 'customer_id' => $data['customer_id'], 'warehouse_id' => $data['warehouse_id'], 'sale_date' => $data['sale_date'], 'payment_type' => $data['payment_type'], 'due_date' => $data['due_date'] ?? null, 'cash_account_id' => $data['cash_account_id'] ?? null, 'status' => 'draft', 'notes' => $data['notes'] ?? null, 'created_by' => $request->user()->id]);
             foreach ($data['items'] as $item) {
                 $sale->items()->create(['product_id' => $item['product_id'], 'quantity' => $item['quantity'], 'unit_price' => $item['unit_price'], 'line_total' => bcmul($item['quantity'], $item['unit_price'], 2)]);
             } $audit->record($request, 'CREATE', 'Sale', $sale, newValues: $sale->load('items')->toArray());
@@ -52,6 +59,6 @@ class SaleController extends Controller
             $audit->record($request, 'POST', 'Sale', $posted, $old, $posted->toArray());
         });
 
-        return back()->with('success', 'Penjualan diposting, stok berkurang, dan piutang diperbarui.');
+        return back()->with('success', 'Penjualan diposting, stok dan pembayaran telah diperbarui.');
     }
 }

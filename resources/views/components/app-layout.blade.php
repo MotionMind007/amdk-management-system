@@ -28,10 +28,13 @@
                     </a>
                 </div>
                 <div class="flex items-center gap-3">
-                    <div class="hidden text-right sm:block">
+                    <a href="{{ route('profile.show') }}" class="hidden text-right transition hover:opacity-75 sm:block" title="Lihat profil">
                         <p class="text-sm font-medium text-slate-800">{{ auth()->user()->name }}</p>
                         <p class="text-xs text-slate-500">{{ auth()->user()->role->label() }}</p>
-                    </div>
+                    </a>
+                    <a href="{{ route('profile.show') }}" class="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 sm:hidden" aria-label="Lihat profil" title="Lihat profil">
+                        <x-ui.icon name="user" class="size-5" />
+                    </a>
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
                         <button class="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Keluar</button>

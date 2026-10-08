@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\CashAccount;
 use App\Models\GoodsReceipt;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
@@ -15,6 +16,7 @@ class PurchasingService
     public function __construct(
         private InventoryService $inventoryService,
         private DocumentNumberService $numberService,
+        private PaymentService $paymentService,
     ) {}
 
     /** @param array<int, string> $quantities keyed by purchase order item id */
@@ -59,6 +61,20 @@ class PurchasingService
 
             $receipt->update(['total' => $receiptTotal]);
             $purchaseOrder->increment('outstanding_amount', $receiptTotal);
+
+            if ($purchaseOrder->payment_type === 'cash') {
+                $cashAccount = CashAccount::query()
+                    ->whereKey($purchaseOrder->cash_account_id)
+                    ->where('is_active', true)
+                    ->first();
+
+                if ($cashAccount === null) {
+                    throw ValidationException::withMessages(['cash_account_id' => 'Akun kas atau bank untuk pembelian cash tidak tersedia.']);
+                }
+
+                $this->paymentService->paySupplier($purchaseOrder, $cashAccount, $receiptTotal, $user);
+            }
+
             $hasRemaining = $purchaseOrder->items()->whereColumn('received_quantity', '<', 'ordered_quantity')->exists();
             $purchaseOrder->update(['status' => $hasRemaining ? 'partially_received' : 'completed']);
 

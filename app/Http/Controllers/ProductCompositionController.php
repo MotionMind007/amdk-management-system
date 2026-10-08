@@ -24,7 +24,20 @@ class ProductCompositionController extends Controller
     public function update(Request $request, Product $product, AuditService $auditService): RedirectResponse
     {
         $request->merge(['components' => collect($request->input('components', []))->filter(fn (array $component): bool => filled($component['product_id'] ?? null) || filled($component['quantity'] ?? null))->values()->all()]);
-        $validated = $request->validate(['components' => ['required', 'array', 'min:1'], 'components.*.product_id' => ['required', 'distinct', 'exists:products,id'], 'components.*.quantity' => ['required', 'numeric', 'gt:0']]);
+        $validated = $request->validate([
+            'components' => ['required', 'array', 'min:1'],
+            'components.*.product_id' => ['required', 'distinct', 'exists:products,id'],
+            'components.*.quantity' => ['required', 'numeric', 'gt:0'],
+        ], [
+            'components.required' => 'Tambahkan minimal satu bahan.',
+            'components.min' => 'Tambahkan minimal satu bahan.',
+            'components.*.product_id.required' => 'Bahan wajib dipilih.',
+            'components.*.product_id.distinct' => 'Bahan yang sama tidak boleh ditambahkan lebih dari satu kali.',
+            'components.*.product_id.exists' => 'Bahan yang dipilih tidak tersedia.',
+            'components.*.quantity.required' => 'Jumlah bahan wajib diisi.',
+            'components.*.quantity.numeric' => 'Jumlah bahan harus berupa angka.',
+            'components.*.quantity.gt' => 'Jumlah bahan harus lebih besar dari nol.',
+        ]);
         DB::transaction(function () use ($request, $product, $validated, $auditService): void {
             $oldValues = $product->compositions()->get()->toArray();
             $product->compositions()->delete();

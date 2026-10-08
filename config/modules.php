@@ -103,6 +103,18 @@ return [
             ['label' => 'Ringkasan Laporan', 'route' => 'reports.index', 'active' => 'reports.*'],
         ],
     ],
+    'employees' => [
+        'label' => 'Karyawan',
+        'description' => 'Data identitas, jabatan, dan status karyawan.',
+        'permission' => 'system.manage',
+        'icon' => 'employees',
+        'color' => 'rose',
+        'route' => 'employees.index',
+        'navigation' => [
+            ['label' => 'Daftar Karyawan', 'route' => 'employees.index', 'active' => 'employees.index'],
+            ['label' => 'Tambah Karyawan', 'route' => 'employees.create', 'active' => 'employees.create'],
+        ],
+    ],
     'system' => [
         'label' => 'Sistem Admin',
         'description' => 'User, hak akses, pengaturan, dan audit log.',
@@ -112,6 +124,7 @@ return [
         'route' => 'admin.users.index',
         'navigation' => [
             ['label' => 'User & Hak Akses', 'route' => 'admin.users.index', 'active' => 'admin.users.*'],
+            ['label' => 'Stok Awal', 'route' => 'admin.opening-stocks.index', 'active' => 'admin.opening-stocks.*'],
             ['label' => 'Audit Log', 'route' => 'admin.audit-logs.index', 'active' => 'admin.audit-logs.*'],
         ],
     ],

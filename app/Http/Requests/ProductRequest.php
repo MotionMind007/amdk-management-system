@@ -31,8 +31,6 @@ class ProductRequest extends FormRequest
             'type' => ['required', Rule::enum(ProductType::class)],
             'minimum_stock' => ['required', 'numeric', 'min:0'],
             'maximum_stock' => ['nullable', 'numeric', 'gte:minimum_stock'],
-            'purchase_price' => ['required', 'numeric', 'min:0'],
-            'selling_price' => ['required', 'numeric', 'min:0'],
             'is_active' => ['required', 'boolean'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ];
