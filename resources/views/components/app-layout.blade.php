@@ -20,11 +20,10 @@
                             <x-ui.icon name="menu" class="size-6" />
                         </button>
                     @endif
-                    <a href="{{ route('modules.index') }}" class="flex items-center gap-3">
-                        <span class="flex size-9 items-center justify-center rounded-lg bg-brand-600 text-white"><x-ui.icon name="water" class="size-5" /></span>
+                    <a href="{{ route('modules.index') }}" class="flex min-w-0 items-center gap-3">
+                        <img src="{{ asset('images/company-logo-transparent.png') }}" alt="PT. Air Minum Jayapura RobongHolo Nanwani" class="h-9 w-auto max-w-36 object-contain sm:h-10 sm:max-w-44">
                         <span class="hidden sm:block">
-                            <span class="block text-sm font-semibold text-slate-900">Sistem Operasional AMDK</span>
-                            <span class="block text-xs text-slate-500">{{ $moduleData['label'] ?? 'Pusat Modul' }}</span>
+                            <span class="block text-xs font-medium text-slate-500">{{ $moduleData['label'] ?? 'Pusat Modul' }}</span>
                         </span>
                     </a>
                 </div>
