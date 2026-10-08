@@ -1,0 +1,41 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../views/**/*.blade.php';
+@source '../js/**/*.js';
+
+@theme {
+    --font-sans: Inter, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+    --color-brand-50: #eff8ff;
+    --color-brand-100: #dbefff;
+    --color-brand-500: #1683c4;
+    --color-brand-600: #0d6da7;
+    --color-brand-700: #0d5785;
+    --color-brand-950: #082f49;
+}
+
+@layer base {
+    body {
+        @apply bg-slate-50 text-slate-900 antialiased;
+    }
+
+    button,
+    a,
+    input,
+    select,
+    textarea {
+        @apply focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600;
+    }
+}
+
+@layer components {
+    .login-form-panel {
+        background-color: #f5fbff;
+        background-image:
+            radial-gradient(circle at center, rgb(14 165 233 / 0.13) 0 2px, transparent 2.5px),
+            linear-gradient(135deg, rgb(239 248 255 / 0.92), rgb(255 255 255 / 0.85) 48%, rgb(219 239 255 / 0.72));
+        background-position: 0 0, 0 0;
+        background-size: 28px 28px, 100% 100%;
+    }
+}

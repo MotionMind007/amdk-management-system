@@ -1,0 +1,118 @@
+<?php
+
+return [
+    'production' => [
+        'label' => 'Produksi',
+        'description' => 'Rekap hasil produksi harian dan batch.',
+        'permission' => 'production.view',
+        'icon' => 'production',
+        'color' => 'cyan',
+        'route' => 'production.index',
+        'navigation' => [
+            ['label' => 'Rekap Harian', 'route' => 'production.index', 'active' => 'production.index'],
+            ['label' => 'Buat Rekap', 'route' => 'production.create', 'active' => 'production.create', 'permission' => 'production.manage'],
+        ],
+    ],
+    'sales' => [
+        'label' => 'Penjualan',
+        'description' => 'Transaksi, pembayaran, dan piutang pelanggan.',
+        'permission' => 'sales.view',
+        'icon' => 'sales',
+        'color' => 'blue',
+        'route' => 'sales.index',
+        'navigation' => [
+            ['label' => 'Transaksi Penjualan', 'route' => 'sales.index', 'active' => 'sales.index'],
+            ['label' => 'Buat Penjualan', 'route' => 'sales.create', 'active' => 'sales.create', 'permission' => 'sales.manage'],
+            ['label' => 'Pelanggan', 'route' => 'customers.index', 'active' => 'customers.*'],
+        ],
+    ],
+    'purchasing' => [
+        'label' => 'Pembelian',
+        'description' => 'PO, penerimaan bahan, dan hutang supplier.',
+        'permission' => 'purchasing.view',
+        'icon' => 'purchasing',
+        'color' => 'violet',
+        'route' => 'purchasing.index',
+        'navigation' => [
+            ['label' => 'Purchase Order', 'route' => 'purchasing.index', 'active' => 'purchasing.index'],
+            ['label' => 'Buat Purchase Order', 'route' => 'purchasing.create', 'active' => 'purchasing.create', 'permission' => 'purchasing.manage'],
+            ['label' => 'Supplier', 'route' => 'suppliers.index', 'active' => 'suppliers.*'],
+        ],
+    ],
+    'inventory' => [
+        'label' => 'Stok',
+        'description' => 'Saldo, pergerakan, dan peringatan stok.',
+        'permission' => 'inventory.view',
+        'icon' => 'inventory',
+        'color' => 'emerald',
+        'route' => 'inventory.index',
+        'navigation' => [
+            ['label' => 'Stok Barang', 'route' => 'inventory.index', 'active' => 'inventory.index'],
+            ['label' => 'Pergerakan Stok', 'route' => 'inventory.movements', 'active' => 'inventory.movements'],
+            ['label' => 'Penyesuaian Stok', 'route' => 'inventory.adjustment.create', 'active' => 'inventory.adjustment.*', 'permission' => 'inventory.manage'],
+            ['label' => 'Master Produk', 'route' => 'products.index', 'active' => 'products.*'],
+        ],
+    ],
+    'finance' => [
+        'label' => 'Keuangan',
+        'description' => 'Kas, bank, pemasukan, dan pengeluaran.',
+        'permission' => 'finance.view',
+        'icon' => 'finance',
+        'color' => 'amber',
+        'route' => 'finance.index',
+        'navigation' => [
+            ['label' => 'Ringkasan Keuangan', 'route' => 'finance.index', 'active' => 'finance.index'],
+            ['label' => 'Pemasukan / Pengeluaran', 'route' => 'finance.transactions.create', 'active' => 'finance.transactions.*', 'permission' => 'finance.manage'],
+            ['label' => 'Laporan Sederhana', 'route' => 'reports.index', 'active' => 'reports.*'],
+        ],
+    ],
+    'customers' => [
+        'label' => 'Pelanggan',
+        'description' => 'Data dan histori transaksi pelanggan.',
+        'permission' => 'customers.view',
+        'icon' => 'customers',
+        'color' => 'sky',
+        'route' => 'customers.index',
+        'navigation' => [
+            ['label' => 'Daftar Pelanggan', 'route' => 'customers.index', 'active' => 'customers.index'],
+            ['label' => 'Tambah Pelanggan', 'route' => 'customers.create', 'active' => 'customers.create', 'permission' => 'customers.manage'],
+            ['label' => 'Transaksi Penjualan', 'route' => 'sales.index', 'active' => 'sales.*'],
+        ],
+    ],
+    'suppliers' => [
+        'label' => 'Supplier',
+        'description' => 'Data dan histori pembelian supplier.',
+        'permission' => 'suppliers.view',
+        'icon' => 'suppliers',
+        'color' => 'indigo',
+        'route' => 'suppliers.index',
+        'navigation' => [
+            ['label' => 'Daftar Supplier', 'route' => 'suppliers.index', 'active' => 'suppliers.index'],
+            ['label' => 'Tambah Supplier', 'route' => 'suppliers.create', 'active' => 'suppliers.create', 'permission' => 'suppliers.manage'],
+            ['label' => 'Riwayat Pembelian', 'route' => 'purchasing.index', 'active' => 'purchasing.*'],
+        ],
+    ],
+    'reports' => [
+        'label' => 'Laporan',
+        'description' => 'Laporan operasional dan keuangan sederhana.',
+        'permission' => 'reports.view',
+        'icon' => 'reports',
+        'color' => 'slate',
+        'route' => 'reports.index',
+        'navigation' => [
+            ['label' => 'Ringkasan Laporan', 'route' => 'reports.index', 'active' => 'reports.*'],
+        ],
+    ],
+    'system' => [
+        'label' => 'Sistem Admin',
+        'description' => 'User, hak akses, pengaturan, dan audit log.',
+        'permission' => 'system.manage',
+        'icon' => 'system',
+        'color' => 'gray',
+        'route' => 'admin.users.index',
+        'navigation' => [
+            ['label' => 'User & Hak Akses', 'route' => 'admin.users.index', 'active' => 'admin.users.*'],
+            ['label' => 'Audit Log', 'route' => 'admin.audit-logs.index', 'active' => 'admin.audit-logs.*'],
+        ],
+    ],
+];
