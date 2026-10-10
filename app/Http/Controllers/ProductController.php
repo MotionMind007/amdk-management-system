@@ -19,6 +19,7 @@ class ProductController extends Controller
         $search = $request->string('search')->trim()->toString();
         $products = Product::query()
             ->with('unit:id,code,name')
+            ->where('is_active', true)
             ->when($search !== '', fn ($query) => $query->where(function ($query) use ($search): void {
                 $query->where('name', 'like', "%{$search}%")
                     ->orWhere('sku', 'like', "%{$search}%");
@@ -76,9 +77,9 @@ class ProductController extends Controller
         DB::transaction(function () use ($request, $product, $auditService): void {
             $oldValues = $product->toArray();
             $product->update(['is_active' => false]);
-            $auditService->record($request, 'DEACTIVATE', 'Product', $product, $oldValues, $product->fresh()->toArray());
+            $auditService->record($request, 'DELETE', 'Product', $product, $oldValues, $product->fresh()->toArray());
         });
 
-        return back()->with('success', 'Produk dinonaktifkan tanpa menghapus histori stok.');
+        return back()->with('success', 'Produk berhasil dihapus dari master. Histori transaksi tetap tersimpan.');
     }
 }

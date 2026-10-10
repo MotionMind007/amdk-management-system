@@ -24,7 +24,7 @@ class InventoryAdjustmentController extends Controller
     public function store(StoreInventoryAdjustmentRequest $request, InventoryService $inventory, AuditService $audit): RedirectResponse
     {
         $data = $request->validated();
-        $product = Product::findOrFail($data['product_id']);
+        $product = Product::query()->with('unit:id,code')->findOrFail($data['product_id']);
         $warehouse = Warehouse::findOrFail($data['warehouse_id']);
         $method = $data['direction'] === 'in' ? 'increase' : 'decrease';
         $movement = $inventory->{$method}(
@@ -35,7 +35,11 @@ class InventoryAdjustmentController extends Controller
             $request->user(),
             notes: $data['notes'],
         );
-        $audit->record($request, 'ADJUST', 'Inventory', $movement, newValues: $movement->toArray());
+        $directionLabel = $data['direction'] === 'in' ? 'Penambahan' : 'Pengurangan';
+        $auditDescription = "{$directionLabel} stok {$product->name} sebanyak ".number_format((float) $data['quantity'], 3, ',', '.')." {$product->unit->code} di {$warehouse->name}.";
+        $auditDescription .= " Alasan: {$data['notes']}. Saldo ".number_format((float) $movement->balance_before, 3, ',', '.').' menjadi '.number_format((float) $movement->balance_after, 3, ',', '.')." {$product->unit->code}.";
+
+        $audit->record($request, 'ADJUST', 'Inventory', $movement, newValues: $movement->toArray(), description: $auditDescription);
 
         return redirect()->route('inventory.index')->with('success', 'Penyesuaian stok berhasil dicatat.');
     }

@@ -10,6 +10,7 @@ enum StockMovementType: string
     case ProductionOutput = 'production_output';
     case Sale = 'sale';
     case Adjustment = 'adjustment';
+    case StockOpname = 'stock_opname';
     case Reversal = 'reversal';
 
     public function label(): string
@@ -21,6 +22,7 @@ enum StockMovementType: string
             self::ProductionOutput => 'Hasil Produksi',
             self::Sale => 'Penjualan',
             self::Adjustment => 'Penyesuaian Stok',
+            self::StockOpname => 'Stok Opname',
             self::Reversal => 'Pembalikan Transaksi',
         };
     }

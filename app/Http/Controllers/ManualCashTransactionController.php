@@ -49,7 +49,13 @@ class ManualCashTransactionController extends Controller
                 ? $account->increment('balance', $data['amount'])
                 : $account->decrement('balance', $data['amount']);
 
-            $audit->record($request, 'CREATE', 'Finance', $transaction, newValues: $transaction->toArray());
+            $directionLabel = $transaction->direction === 'out' ? 'Pengeluaran' : 'Pemasukan';
+            $categoryLabel = $transaction->expense_category?->label();
+            $auditDescription = "{$directionLabel} Rp ".number_format((float) $transaction->amount, 0, ',', '.')." melalui {$account->name}";
+            $auditDescription .= $categoryLabel ? ". Kategori: {$categoryLabel}" : '';
+            $auditDescription .= ". Keterangan: {$transaction->description}. Referensi: {$transaction->reference_number}.";
+
+            $audit->record($request, 'CREATE', 'Finance', $transaction, newValues: $transaction->toArray(), description: $auditDescription);
         });
 
         return redirect()->route('finance.index')->with('success', 'Transaksi kas berhasil dicatat.');

@@ -25,8 +25,10 @@ use App\Http\Controllers\PurchaseReceiptInvoiceController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SalesInvoiceController;
+use App\Http\Controllers\StockOpnameController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\SupplierPaymentController;
+use App\Http\Controllers\WarehouseController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/modules');
@@ -67,12 +69,28 @@ Route::middleware('auth')->group(function (): void {
         Route::get('/products', [ProductController::class, 'index'])->name('products.index');
         Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
         Route::get('/inventory/movements', [InventoryController::class, 'movements'])->name('inventory.movements');
+        Route::get('/inventory/opnames', [StockOpnameController::class, 'index'])->name('inventory.opnames.index');
+        Route::get('/warehouses', [WarehouseController::class, 'index'])->name('warehouses.index');
     });
     Route::resource('products', ProductController::class)->except(['index', 'show'])->middleware('permission:inventory.manage');
     Route::middleware('permission:inventory.manage')->group(function (): void {
         Route::get('/inventory/adjustment/create', [InventoryAdjustmentController::class, 'create'])->name('inventory.adjustment.create');
         Route::post('/inventory/adjustment', [InventoryAdjustmentController::class, 'store'])->name('inventory.adjustment.store');
+        Route::get('/inventory/opnames/create', [StockOpnameController::class, 'create'])->name('inventory.opnames.create');
+        Route::post('/inventory/opnames', [StockOpnameController::class, 'store'])->name('inventory.opnames.store');
+        Route::get('/inventory/opnames/{stockOpname}/edit', [StockOpnameController::class, 'edit'])->name('inventory.opnames.edit');
+        Route::put('/inventory/opnames/{stockOpname}', [StockOpnameController::class, 'update'])->name('inventory.opnames.update');
     });
+    Route::get('/inventory/opnames/{stockOpname}', [StockOpnameController::class, 'show'])
+        ->middleware('permission:inventory.view')
+        ->name('inventory.opnames.show');
+
+    Route::post('/inventory/opnames/{stockOpname}/post', [StockOpnameController::class, 'post'])
+        ->middleware('permission:system.manage')
+        ->name('inventory.opnames.post');
+    Route::resource('warehouses', WarehouseController::class)
+        ->only(['create', 'store', 'edit', 'update'])
+        ->middleware('permission:system.manage');
 
     Route::prefix('admin')->name('admin.')->middleware('permission:system.manage')->group(function (): void {
         Route::resource('users', UserController::class)->except('show');
@@ -128,4 +146,5 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/finance/payables/{purchaseOrder}/payment', [SupplierPaymentController::class, 'store'])->name('finance.supplier-payment.store');
     });
     Route::get('/reports', [ReportController::class, 'index'])->middleware('permission:reports.view')->name('reports.index');
+    Route::get('/reports/profit-loss', [ReportController::class, 'profitLoss'])->middleware('permission:reports.view')->name('reports.profit-loss');
 });

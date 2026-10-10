@@ -14,7 +14,7 @@
         <section class="mt-6 rounded-xl border border-slate-200 bg-white p-4">
             <div>
                 <p class="text-sm font-semibold">Komposisi produk</p>
-                <p class="mt-1 text-sm text-slate-500">Komposisi wajib diatur sebelum rekap dapat diposting ke stok.</p>
+                <p class="mt-1 text-sm text-slate-500">Komposisi hanya digunakan untuk produksi produk jadi. Produksi kemasan memakai bahan aktual.</p>
             </div>
             <div class="mt-3 flex flex-wrap gap-2">
                 @foreach ($finishedProducts as $product)
@@ -31,16 +31,27 @@
         <div class="overflow-x-auto">
             <table class="min-w-full text-left text-sm">
                 <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                    <tr><th class="px-5 py-3">Nomor/Tanggal</th><th class="px-5 py-3">Hasil</th><th class="px-5 py-3">Status</th><th class="px-5 py-3 text-right">Aksi</th></tr>
+                    <tr><th class="px-5 py-3">Nomor/Tanggal</th><th class="px-5 py-3">Jenis</th><th class="px-5 py-3">Hasil</th><th class="px-5 py-3">Status</th><th class="px-5 py-3 text-right">Aksi</th></tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     @forelse ($productions as $production)
                         @php
-                            $missingComposition = $production->items->first(fn ($item) => $item->product->compositions->isEmpty());
+                            $missingComposition = $production->production_type === \App\ProductionType::FinishedGood
+                                ? $production->items->first(fn ($item) => $item->product->compositions->isEmpty())
+                                : null;
+                            $missingMaterials = $production->production_type === \App\ProductionType::Packaging && $production->materials->isEmpty();
                         @endphp
                         <tr>
                             <td class="px-5 py-4"><p class="font-medium">{{ $production->number }}</p><p class="text-xs text-slate-500">{{ $production->production_date->format('d/m/Y') }}</p></td>
-                            <td class="px-5 py-4 text-slate-600">@foreach ($production->items as $item)<span class="block">{{ $item->product->name }}: {{ number_format((float) $item->quantity, 0, ',', '.') }}</span>@endforeach</td>
+                            <td class="px-5 py-4"><x-ui.badge :tone="$production->production_type === \App\ProductionType::Packaging ? 'blue' : 'green'">{{ $production->production_type->label() }}</x-ui.badge></td>
+                            <td class="px-5 py-4 text-slate-600">
+                                @foreach ($production->items as $item)
+                                    <span class="block">{{ $item->product->name }}: {{ number_format((float) $item->quantity, 0, ',', '.') }} {{ $item->product->unit->code }}@if ((float) $item->rejected_quantity > 0) <span class="text-xs text-red-600">({{ number_format((float) $item->rejected_quantity, 0, ',', '.') }} reject)</span>@endif</span>
+                                @endforeach
+                                @if ($production->production_type === \App\ProductionType::Packaging && $production->materials->isNotEmpty())
+                                    <span class="mt-1 block text-xs text-slate-400">Bahan: {{ $production->materials->map(fn ($material) => $material->product->name.' '.number_format((float) $material->quantity, 0, ',', '.').' '.$material->product->unit->code)->join(', ') }}</span>
+                                @endif
+                            </td>
                             <td class="px-5 py-4"><x-ui.badge :tone="$production->status === 'posted' ? 'green' : 'gray'">{{ $production->status === 'posted' ? 'Diposting' : 'Draft' }}</x-ui.badge></td>
                             <td class="px-5 py-4 text-right">
                                 @if ($production->status === 'posted')
@@ -50,6 +61,8 @@
                                         <a href="{{ route('production.edit', $production) }}" class="inline-flex min-h-11 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Edit</a>
                                         @if ($missingComposition)
                                             <a href="{{ route('production.compositions.edit', $missingComposition->product) }}" class="inline-flex min-h-11 items-center rounded-lg border border-amber-300 bg-amber-50 px-3 text-sm font-semibold text-amber-800">Atur komposisi dulu</a>
+                                        @elseif ($missingMaterials)
+                                            <a href="{{ route('production.edit', $production) }}" class="inline-flex min-h-11 items-center rounded-lg border border-amber-300 bg-amber-50 px-3 text-sm font-semibold text-amber-800">Lengkapi bahan</a>
                                         @else
                                             <form method="POST" action="{{ route('production.post', $production) }}">@csrf<x-ui.button type="submit">Posting</x-ui.button></form>
                                         @endif
@@ -60,7 +73,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="4" class="p-6"><x-ui.empty-state title="Belum ada rekap produksi" description="Buat rekap hasil produksi pertama." /></td></tr>
+                        <tr><td colspan="5" class="p-6"><x-ui.empty-state title="Belum ada rekap produksi" description="Buat rekap hasil produksi pertama." /></td></tr>
                     @endforelse
                 </tbody>
             </table>

@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\ExpenseCategory;
 use App\Models\CashTransaction;
 use App\Models\DailyProductionItem;
 use App\Models\GoodsReceipt;
 use App\Models\PurchaseOrder;
 use App\Models\Sale;
+use App\ProductionType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
@@ -42,8 +44,70 @@ class ReportController extends Controller
             'cashOut' => CashTransaction::query()->where('direction', 'out')->whereDate('transaction_date', '>=', $startDate)->whereDate('transaction_date', '<=', $endDate)->sum('amount'),
             'receivableTotal' => Sale::query()->sum('outstanding_amount'),
             'payableTotal' => PurchaseOrder::query()->sum('outstanding_amount'),
-            'productionTotal' => DailyProductionItem::query()->whereHas('production', fn ($query) => $query->where('status', 'posted')->whereDate('production_date', '>=', $startDate)->whereDate('production_date', '<=', $endDate))->sum('quantity'),
+            'productionTotal' => DailyProductionItem::query()->whereHas('production', fn ($query) => $query->where('production_type', ProductionType::FinishedGood)->where('status', 'posted')->whereDate('production_date', '>=', $startDate)->whereDate('production_date', '<=', $endDate))->sum('quantity'),
             'productSales' => $productSales,
+        ]);
+    }
+
+    public function profitLoss(Request $request): View
+    {
+        $data = $request->validate([
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
+        ]);
+        $startDate = $data['start_date'] ?? now()->startOfMonth()->format('Y-m-d');
+        $endDate = $data['end_date'] ?? today()->format('Y-m-d');
+
+        $salesRevenue = Sale::query()
+            ->whereNot('status', 'draft')
+            ->whereDate('sale_date', '>=', $startDate)
+            ->whereDate('sale_date', '<=', $endDate)
+            ->sum('total');
+
+        $otherIncome = CashTransaction::query()
+            ->where('direction', 'in')
+            ->whereNull('source_type')
+            ->whereDate('transaction_date', '>=', $startDate)
+            ->whereDate('transaction_date', '<=', $endDate)
+            ->sum('amount');
+
+        $expenseRows = DB::table('cash_transactions')
+            ->where('direction', 'out')
+            ->whereNull('source_type')
+            ->whereDate('transaction_date', '>=', $startDate)
+            ->whereDate('transaction_date', '<=', $endDate)
+            ->groupBy('expense_category')
+            ->orderBy('expense_category')
+            ->select('expense_category')
+            ->selectRaw('SUM(amount) as total')
+            ->get()
+            ->map(function (object $expense): object {
+                $category = is_string($expense->expense_category)
+                    ? ExpenseCategory::tryFrom($expense->expense_category)
+                    : null;
+
+                $expense->label = $category?->label() ?? 'Tanpa Kategori';
+
+                return $expense;
+            });
+
+        $operatingExpenses = $expenseRows->sum('total');
+        $totalIncome = (float) $salesRevenue + (float) $otherIncome;
+
+        return view('reports.profit-loss', [
+            'startDate' => $startDate,
+            'endDate' => $endDate,
+            'salesRevenue' => $salesRevenue,
+            'otherIncome' => $otherIncome,
+            'totalIncome' => $totalIncome,
+            'expenseRows' => $expenseRows,
+            'operatingExpenses' => $operatingExpenses,
+            'profitBeforeHpp' => $totalIncome - (float) $operatingExpenses,
+            'purchaseReceived' => GoodsReceipt::query()
+                ->where('status', 'posted')
+                ->whereDate('receipt_date', '>=', $startDate)
+                ->whereDate('receipt_date', '<=', $endDate)
+                ->sum('total'),
         ]);
     }
 }

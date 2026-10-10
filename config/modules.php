@@ -49,8 +49,10 @@ return [
         'navigation' => [
             ['label' => 'Stok Barang', 'route' => 'inventory.index', 'active' => 'inventory.index'],
             ['label' => 'Pergerakan Stok', 'route' => 'inventory.movements', 'active' => 'inventory.movements'],
+            ['label' => 'Stok Opname', 'route' => 'inventory.opnames.index', 'active' => 'inventory.opnames.*'],
             ['label' => 'Penyesuaian Stok', 'route' => 'inventory.adjustment.create', 'active' => 'inventory.adjustment.*', 'permission' => 'inventory.manage'],
             ['label' => 'Master Produk', 'route' => 'products.index', 'active' => 'products.*'],
+            ['label' => 'Master Gudang', 'route' => 'warehouses.index', 'active' => 'warehouses.*'],
         ],
     ],
     'finance' => [
@@ -63,7 +65,8 @@ return [
         'navigation' => [
             ['label' => 'Ringkasan Keuangan', 'route' => 'finance.index', 'active' => 'finance.index'],
             ['label' => 'Pemasukan / Pengeluaran', 'route' => 'finance.transactions.create', 'active' => 'finance.transactions.*', 'permission' => 'finance.manage'],
-            ['label' => 'Laporan Sederhana', 'route' => 'reports.index', 'active' => 'reports.*'],
+            ['label' => 'Laporan Sederhana', 'route' => 'reports.index', 'active' => 'reports.index'],
+            ['label' => 'Laba Rugi', 'route' => 'reports.profit-loss', 'active' => 'reports.profit-loss'],
         ],
     ],
     'customers' => [
@@ -100,7 +103,8 @@ return [
         'color' => 'slate',
         'route' => 'reports.index',
         'navigation' => [
-            ['label' => 'Ringkasan Laporan', 'route' => 'reports.index', 'active' => 'reports.*'],
+            ['label' => 'Ringkasan Laporan', 'route' => 'reports.index', 'active' => 'reports.index'],
+            ['label' => 'Laba Rugi', 'route' => 'reports.profit-loss', 'active' => 'reports.profit-loss'],
         ],
     ],
     'employees' => [

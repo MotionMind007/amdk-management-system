@@ -6,6 +6,7 @@ use App\Http\Requests\ProductionRequest;
 use App\Models\DailyProduction;
 use App\Models\Product;
 use App\Models\Warehouse;
+use App\ProductionType;
 use App\ProductType;
 use App\Services\AuditService;
 use App\Services\DocumentNumberService;
@@ -21,7 +22,14 @@ class ProductionController extends Controller
     public function index(): View
     {
         $productions = DailyProduction::query()
-            ->with(['warehouse:id,name', 'items.product:id,name', 'items.product.compositions:id,product_id'])
+            ->with([
+                'items.product:id,name,unit_id',
+                'items.product.compositions:id,product_id',
+                'items.product.unit:id,code',
+                'materials.product:id,name,unit_id',
+                'materials.product.unit:id,code',
+                'warehouse:id,name',
+            ])
             ->latest('production_date')
             ->latest('id')
             ->paginate(20);
@@ -39,8 +47,10 @@ class ProductionController extends Controller
     public function create(): View
     {
         return view('production.create', [
-            'production' => new DailyProduction,
-            'products' => Product::query()->where('type', ProductType::FinishedGood)->where('is_active', true)->orderBy('name')->get(),
+            'production' => new DailyProduction(['production_type' => ProductionType::FinishedGood]),
+            'finishedProducts' => Product::query()->where('type', ProductType::FinishedGood)->where('is_active', true)->with('unit')->orderBy('name')->get(),
+            'packagingProducts' => Product::query()->whereIn('type', [ProductType::PackagingMaterial->value, ProductType::SemiFinished->value])->where('is_active', true)->with('unit')->orderBy('name')->get(),
+            'materialProducts' => Product::query()->whereNot('type', ProductType::FinishedGood->value)->where('is_active', true)->with('unit')->orderBy('name')->get(),
             'warehouses' => Warehouse::query()->where('is_active', true)->orderBy('name')->get(),
         ]);
     }
@@ -50,11 +60,14 @@ class ProductionController extends Controller
         $validated = $request->validated();
 
         $production = DB::transaction(function () use ($request, $validated, $numberService, $auditService): DailyProduction {
-            $production = DailyProduction::create(['number' => $numberService->next('PROD'), 'production_date' => $validated['production_date'], 'warehouse_id' => $validated['warehouse_id'], 'status' => 'draft', 'notes' => $validated['notes'] ?? null, 'created_by' => $request->user()->id]);
+            $production = DailyProduction::create(['number' => $numberService->next('PROD'), 'production_date' => $validated['production_date'], 'warehouse_id' => $validated['warehouse_id'], 'production_type' => $validated['production_type'], 'status' => 'draft', 'notes' => $validated['notes'] ?? null, 'created_by' => $request->user()->id]);
             foreach ($validated['items'] as $item) {
                 $production->items()->create($item);
             }
-            $auditService->record($request, 'CREATE', 'Production', $production, newValues: $production->load('items')->toArray());
+            foreach ($validated['materials'] ?? [] as $material) {
+                $production->materials()->create($material);
+            }
+            $auditService->record($request, 'CREATE', 'Production', $production, newValues: $production->load(['items', 'materials'])->toArray());
 
             return $production;
         });
@@ -66,11 +79,13 @@ class ProductionController extends Controller
     {
         abort_unless($production->status === 'draft', 404);
 
-        $production->load('items');
+        $production->load(['items', 'materials']);
 
         return view('production.create', [
             'production' => $production,
-            'products' => Product::query()->where('type', ProductType::FinishedGood)->where('is_active', true)->orderBy('name')->get(),
+            'finishedProducts' => Product::query()->where('type', ProductType::FinishedGood)->where('is_active', true)->with('unit')->orderBy('name')->get(),
+            'packagingProducts' => Product::query()->whereIn('type', [ProductType::PackagingMaterial->value, ProductType::SemiFinished->value])->where('is_active', true)->with('unit')->orderBy('name')->get(),
+            'materialProducts' => Product::query()->whereNot('type', ProductType::FinishedGood->value)->where('is_active', true)->with('unit')->orderBy('name')->get(),
             'warehouses' => Warehouse::query()->where('is_active', true)->orderBy('name')->get(),
         ]);
     }
@@ -86,19 +101,25 @@ class ProductionController extends Controller
                 throw ValidationException::withMessages(['status' => 'Hanya rekap produksi draft yang dapat diedit.']);
             }
 
-            $oldValues = $production->load('items')->toArray();
+            $oldValues = $production->load(['items', 'materials'])->toArray();
             $production->update([
                 'production_date' => $validated['production_date'],
                 'warehouse_id' => $validated['warehouse_id'],
+                'production_type' => $validated['production_type'],
                 'notes' => $validated['notes'] ?? null,
             ]);
             $production->items()->delete();
+            $production->materials()->delete();
 
             foreach ($validated['items'] as $item) {
                 $production->items()->create($item);
             }
 
-            $auditService->record($request, 'UPDATE', 'Production', $production, $oldValues, $production->load('items')->toArray());
+            foreach ($validated['materials'] ?? [] as $material) {
+                $production->materials()->create($material);
+            }
+
+            $auditService->record($request, 'UPDATE', 'Production', $production, $oldValues, $production->load(['items', 'materials'])->toArray());
         });
 
         return redirect()->route('production.index')->with('success', "Rekap {$production->number} berhasil diperbarui.");
