@@ -25,7 +25,7 @@
                         <tr>
                             <td class="px-5 py-4">
                                 <p class="font-medium">{{ $sale->number }}</p>
-                                <p class="text-xs text-slate-500">{{ $sale->sale_date->format('d/m/Y') }} · {{ $sale->payment_type === 'cash' ? 'Cash' : 'Kredit' }}</p>
+                                <p class="text-xs text-slate-500">{{ $sale->sale_date->format('d/m/Y') }} · {{ $sale->payment_type === 'credit' ? 'Kredit' : ($sale->payment_method === 'transfer' ? 'Transfer' : 'Cash') }}</p>
                             </td>
                             <td class="px-5 py-4">{{ $sale->customer->name }}</td>
                             <td class="px-5 py-4">

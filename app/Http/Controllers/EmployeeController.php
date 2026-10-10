@@ -6,7 +6,6 @@ use App\Http\Requests\EmployeeRequest;
 use App\Models\Employee;
 use App\Models\User;
 use App\Services\AuditService;
-use App\UserRole;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -20,6 +19,7 @@ class EmployeeController extends Controller
     {
         $search = $request->string('search')->trim()->toString();
         $employees = Employee::query()
+            ->with('user:id,role')
             ->when($search !== '', fn ($query) => $query->where(function ($query) use ($search): void {
                 $query->where('name', 'like', "%{$search}%")
                     ->orWhere('employee_code', 'like', "%{$search}%")
@@ -33,9 +33,12 @@ class EmployeeController extends Controller
         return view('employees.index', compact('employees', 'search'));
     }
 
-    public function create(): View
+    public function create(Request $request): View
     {
-        return view('employees.form', ['employee' => new Employee, 'roles' => UserRole::cases()]);
+        return view('employees.form', [
+            'employee' => new Employee,
+            'roles' => $request->user()->role->assignableRoles(),
+        ]);
     }
 
     public function store(EmployeeRequest $request, AuditService $auditService): RedirectResponse
@@ -77,11 +80,15 @@ class EmployeeController extends Controller
         return redirect()->route('employees.index')->with('success', 'Karyawan berhasil ditambahkan.');
     }
 
-    public function edit(Employee $employee): View
+    public function edit(Request $request, Employee $employee): View
     {
         $employee->load('user');
+        abort_if($employee->user !== null && ! $request->user()->role->canAssign($employee->user->role), 403);
 
-        return view('employees.form', ['employee' => $employee, 'roles' => UserRole::cases()]);
+        return view('employees.form', [
+            'employee' => $employee,
+            'roles' => $request->user()->role->assignableRoles(),
+        ]);
     }
 
     public function update(EmployeeRequest $request, Employee $employee, AuditService $auditService): RedirectResponse

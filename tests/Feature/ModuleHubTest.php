@@ -19,6 +19,7 @@ class ModuleHubTest extends TestCase
         $response->assertOk();
         $response->assertSee('Produksi');
         $response->assertSee('Penjualan');
+        $response->assertSee('Karyawan');
         $response->assertSee('Sistem Admin');
     }
 
@@ -30,8 +31,10 @@ class ModuleHubTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Penjualan');
+        $response->assertSee('Stok');
         $response->assertSee('Pelanggan');
         $response->assertDontSee('Sistem Admin');
+        $response->assertDontSee('Karyawan');
         $response->assertDontSee('Pembelian');
     }
 

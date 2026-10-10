@@ -24,7 +24,10 @@
         </div>
         <div>
             <div class="meta-row"><span>Tanggal</span><span>:</span><span>{{ $sale->sale_date->format('d/m/Y') }}</span></div>
-            <div class="meta-row"><span>Pembayaran</span><span>:</span><span>{{ $sale->payment_type === 'cash' ? 'Cash' : 'Kredit' }}</span></div>
+            <div class="meta-row"><span>Pembayaran</span><span>:</span><span>{{ $sale->payment_type === 'credit' ? 'Kredit' : ($sale->payment_method === 'transfer' ? 'Transfer' : 'Cash') }}</span></div>
+            @if ($sale->payment_method === 'transfer')
+                <div class="meta-row"><span>Bank pengirim</span><span>:</span><span>{{ $sale->sender_bank }}</span></div>
+            @endif
             <div class="meta-row"><span>Jatuh tempo</span><span>:</span><span>{{ $sale->due_date?->format('d/m/Y') ?? '-' }}</span></div>
         </div>
     </section>

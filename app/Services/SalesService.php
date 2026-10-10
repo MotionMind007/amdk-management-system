@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\CashAccount;
 use App\Models\Sale;
 use App\Models\User;
+use App\ProductType;
 use App\StockMovementType;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -24,9 +25,17 @@ class SalesService
                 throw ValidationException::withMessages(['status' => 'Hanya penjualan draft yang dapat diposting.']);
             }
 
-            $sale->load(['items.product', 'warehouse']);
+            $sale->load(['customer', 'items.product', 'warehouse']);
             if ($sale->items->isEmpty()) {
                 throw ValidationException::withMessages(['items' => 'Minimal satu produk harus diisi.']);
+            }
+
+            if ($sale->customer === null || $sale->customer->status !== 'active') {
+                throw ValidationException::withMessages(['customer_id' => 'Pelanggan tidak aktif atau tidak tersedia.']);
+            }
+
+            if ($sale->items->contains(fn ($item): bool => $item->product === null || $item->product->type !== ProductType::FinishedGood)) {
+                throw ValidationException::withMessages(['items' => 'Penjualan hanya dapat memuat produk jadi yang tersedia.']);
             }
 
             $total = '0.00';

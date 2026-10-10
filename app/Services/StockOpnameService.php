@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\StockBalance;
 use App\Models\StockOpname;
 use App\Models\User;
 use App\StockMovementType;
@@ -27,6 +28,33 @@ class StockOpnameService
             }
 
             $stockOpname->load(['items.product.unit', 'warehouse']);
+            $productIds = $stockOpname->items->pluck('product_id');
+
+            $productIds->each(function (int $productId) use ($stockOpname): void {
+                StockBalance::query()->firstOrCreate([
+                    'product_id' => $productId,
+                    'warehouse_id' => $stockOpname->warehouse_id,
+                ], ['quantity' => 0]);
+            });
+
+            $balances = StockBalance::query()
+                ->where('warehouse_id', $stockOpname->warehouse_id)
+                ->whereIn('product_id', $productIds)
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('product_id');
+
+            $staleItems = $stockOpname->items->filter(function ($item) use ($balances): bool {
+                $currentQuantity = $balances->get($item->product_id)?->quantity ?? '0';
+
+                return bccomp((string) $currentQuantity, (string) $item->system_quantity, 3) !== 0;
+            });
+
+            if ($staleItems->isNotEmpty()) {
+                throw ValidationException::withMessages([
+                    'stock' => 'Stok sistem berubah setelah draft dibuat. Edit draft, periksa kembali stok fisik, lalu simpan ulang sebelum posting.',
+                ]);
+            }
 
             foreach ($stockOpname->items as $item) {
                 $difference = $item->difference();

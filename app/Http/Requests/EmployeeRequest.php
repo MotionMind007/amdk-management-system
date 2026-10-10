@@ -12,7 +12,16 @@ class EmployeeRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->hasPermission('system.manage') ?? false;
+        $user = $this->user();
+
+        if ($user === null || ! $user->hasPermission('employees.manage')) {
+            return false;
+        }
+
+        $employee = $this->route('employee');
+        $employeeRole = $employee?->user?->role;
+
+        return $employeeRole === null || $user->role->canAssign($employeeRole);
     }
 
     /**
@@ -40,7 +49,7 @@ class EmployeeRequest extends FormRequest
             'department' => ['required', 'string', 'max:255'],
             'join_date' => ['nullable', 'date'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
-            'role' => ['required', Rule::enum(UserRole::class)],
+            'role' => ['required', Rule::enum(UserRole::class)->only($this->user()->role->assignableRoles())],
             'password' => [$requiresInitialPassword ? 'required' : 'nullable', 'confirmed', Password::defaults()],
         ];
     }
@@ -62,6 +71,7 @@ class EmployeeRequest extends FormRequest
             'join_date.date' => 'Tanggal masuk tidak valid.',
             'status.required' => 'Status karyawan wajib dipilih.',
             'role.required' => 'Role login wajib dipilih.',
+            'role.enum' => 'Role login tersebut tidak dapat dipilih.',
             'password.required' => 'Password awal wajib diisi.',
             'password.min' => 'Password minimal 8 karakter.',
             'password.confirmed' => 'Konfirmasi password tidak sesuai.',

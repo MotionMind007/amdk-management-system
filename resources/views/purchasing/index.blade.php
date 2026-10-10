@@ -5,7 +5,9 @@
             <h1 class="mt-1 text-2xl font-semibold">Purchase Order</h1>
             <p class="mt-2 text-sm text-slate-500">PO tidak menambah stok; gunakan penerimaan barang saat bahan tiba.</p>
         </div>
-        <a href="{{ route('purchasing.create') }}" class="inline-flex min-h-11 items-center justify-center rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white">+ Buat PO</a>
+        @if (auth()->user()->hasPermission('purchasing.manage'))
+            <a href="{{ route('purchasing.create') }}" class="inline-flex min-h-11 items-center justify-center rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white">+ Buat PO</a>
+        @endif
     </div>
 
     <div class="mt-7 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -37,20 +39,23 @@
                             </td>
                             <td class="px-5 py-4 text-right">
                                 <div class="flex flex-wrap justify-end gap-2">
-                                    @if ($po->status === 'draft')
+                                    @if ($po->status === 'draft' && auth()->user()->hasPermission('purchasing.approve'))
                                         <form method="POST" action="{{ route('purchasing.approve', $po) }}">
                                             @csrf
                                             <x-ui.button type="submit">Setujui</x-ui.button>
                                         </form>
-                                    @elseif (in_array($po->status, ['approved', 'partially_received'], true))
+                                    @elseif (in_array($po->status, ['approved', 'partially_received'], true) && auth()->user()->hasPermission('purchasing.receive'))
                                         <a href="{{ route('purchasing.receive.create', $po) }}" class="inline-flex min-h-11 items-center rounded-lg bg-brand-600 px-3 text-sm font-semibold text-white">Terima Barang</a>
                                     @endif
 
                                     @foreach ($po->goodsReceipts as $receipt)
                                         <a href="{{ route('purchasing.receipts.invoice', $receipt) }}" target="_blank" rel="noopener" class="inline-flex min-h-11 items-center rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Preview {{ $receipt->number }}</a>
+                                        @if ($receipt->proof_path)
+                                            <a href="{{ route('purchasing.receipts.proof', $receipt) }}" class="inline-flex min-h-11 items-center rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Unduh Bukti</a>
+                                        @endif
                                     @endforeach
 
-                                    @if ((float) $po->outstanding_amount > 0)
+                                    @if ((float) $po->outstanding_amount > 0 && auth()->user()->hasPermission('purchasing.manage'))
                                         <a href="{{ route('finance.supplier-payment.create', $po) }}" class="inline-flex min-h-11 items-center rounded-lg border border-slate-300 px-3 text-sm font-semibold">Bayar</a>
                                     @endif
                                 </div>

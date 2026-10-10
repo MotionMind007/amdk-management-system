@@ -21,6 +21,7 @@ class PaymentService
         return DB::transaction(function () use ($sale, $account, $amount, $user): CustomerPayment {
             $sale = Sale::query()->whereKey($sale->getKey())->lockForUpdate()->firstOrFail();
             $account = CashAccount::query()->whereKey($account->getKey())->lockForUpdate()->firstOrFail();
+            $this->validateActiveAccount($account);
             $this->validatePaymentAmount($amount, $sale->outstanding_amount);
 
             $payment = CustomerPayment::create(['number' => $this->numberService->next('PAY-IN'), 'sale_id' => $sale->id, 'cash_account_id' => $account->id, 'payment_date' => today(), 'amount' => $amount, 'created_by' => $user->id]);
@@ -40,6 +41,7 @@ class PaymentService
         return DB::transaction(function () use ($purchaseOrder, $account, $amount, $user): SupplierPayment {
             $purchaseOrder = PurchaseOrder::query()->whereKey($purchaseOrder->getKey())->lockForUpdate()->firstOrFail();
             $account = CashAccount::query()->whereKey($account->getKey())->lockForUpdate()->firstOrFail();
+            $this->validateActiveAccount($account);
             $this->validatePaymentAmount($amount, $purchaseOrder->outstanding_amount);
             if (bccomp($account->balance, $amount, 2) === -1) {
                 throw ValidationException::withMessages(['amount' => 'Saldo kas atau bank tidak mencukupi.']);
@@ -62,6 +64,13 @@ class PaymentService
         }
         if (bccomp($amount, $outstanding, 2) === 1) {
             throw ValidationException::withMessages(['amount' => 'Pembayaran tidak boleh melebihi saldo outstanding.']);
+        }
+    }
+
+    private function validateActiveAccount(CashAccount $account): void
+    {
+        if (! $account->is_active) {
+            throw ValidationException::withMessages(['cash_account_id' => 'Akun kas atau bank tidak aktif atau tidak tersedia.']);
         }
     }
 }

@@ -19,8 +19,8 @@ class PurchaseOrderRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'supplier_id' => ['required', 'exists:suppliers,id'],
-            'warehouse_id' => ['required', 'exists:warehouses,id'],
+            'supplier_id' => ['required', Rule::exists('suppliers', 'id')->where('status', 'active')->whereNull('deleted_at')],
+            'warehouse_id' => ['required', Rule::exists('warehouses', 'id')->where('is_active', true)],
             'order_date' => ['required', 'date'],
             'expected_date' => ['nullable', 'date', 'after_or_equal:order_date'],
             'payment_type' => ['required', Rule::in(['cash', 'credit'])],
@@ -32,7 +32,11 @@ class PurchaseOrderRequest extends FormRequest
             ],
             'notes' => ['nullable', 'string', 'max:2000'],
             'items' => ['required', 'array', 'min:1'],
-            'items.*.product_id' => ['required', 'distinct', 'exists:products,id'],
+            'items.*.product_id' => [
+                'required',
+                'distinct',
+                Rule::exists('products', 'id')->where('is_active', true)->whereNull('deleted_at'),
+            ],
             'items.*.quantity' => ['required', 'numeric', 'gt:0'],
             'items.*.unit_price' => ['required', 'numeric', 'min:0'],
         ];
@@ -46,6 +50,9 @@ class PurchaseOrderRequest extends FormRequest
             'due_date.after_or_equal' => 'Tanggal jatuh tempo tidak boleh sebelum tanggal pembelian.',
             'cash_account_id.required' => 'Akun kas atau bank wajib dipilih untuk pembelian cash.',
             'cash_account_id.exists' => 'Akun kas atau bank yang dipilih tidak tersedia.',
+            'supplier_id.exists' => 'Supplier yang dipilih tidak aktif atau tidak tersedia.',
+            'warehouse_id.exists' => 'Gudang yang dipilih tidak aktif atau tidak tersedia.',
+            'items.*.product_id.exists' => 'Produk atau bahan yang dipilih tidak aktif atau tidak tersedia.',
         ];
     }
 }

@@ -16,6 +16,7 @@ use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\ManualCashTransactionController;
 use App\Http\Controllers\ModuleController;
 use App\Http\Controllers\ModuleHubController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProductCompositionController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductionController;
@@ -48,6 +49,9 @@ Route::middleware('auth')->group(function (): void {
         ->middleware('throttle:6,1')
         ->name('account.password.update');
     Route::get('/modules', ModuleHubController::class)->name('modules.index');
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
+    Route::post('/notifications/{notification}/read', [NotificationController::class, 'read'])->name('notifications.read');
     Route::get('/dashboard', DashboardController::class)
         ->middleware('permission:dashboard.view')
         ->name('dashboard');
@@ -101,7 +105,7 @@ Route::middleware('auth')->group(function (): void {
 
     Route::resource('employees', EmployeeController::class)
         ->except(['show', 'destroy'])
-        ->middleware('permission:system.manage');
+        ->middleware('permission:employees.manage');
 
     Route::get('/production', [ProductionController::class, 'index'])->middleware('permission:production.view')->name('production.index');
     Route::middleware('permission:production.manage')->group(function (): void {
@@ -116,13 +120,18 @@ Route::middleware('auth')->group(function (): void {
 
     Route::get('/purchasing', [PurchaseOrderController::class, 'index'])->middleware('permission:purchasing.view')->name('purchasing.index');
     Route::get('/purchasing/receipts/{goodsReceipt}/invoice', PurchaseReceiptInvoiceController::class)->middleware('permission:purchasing.view')->name('purchasing.receipts.invoice');
+    Route::get('/purchasing/receipts/{goodsReceipt}/proof', [GoodsReceiptController::class, 'proof'])->middleware('permission:purchasing.view')->name('purchasing.receipts.proof');
     Route::middleware('permission:purchasing.manage')->group(function (): void {
         Route::get('/purchasing/create', [PurchaseOrderController::class, 'create'])->name('purchasing.create');
         Route::post('/purchasing', [PurchaseOrderController::class, 'store'])->name('purchasing.store');
-        Route::post('/purchasing/{purchaseOrder}/approve', [PurchaseOrderController::class, 'approve'])->name('purchasing.approve');
+    });
+    Route::middleware('permission:purchasing.receive')->group(function (): void {
         Route::get('/purchasing/{purchaseOrder}/receive', [GoodsReceiptController::class, 'create'])->name('purchasing.receive.create');
         Route::post('/purchasing/{purchaseOrder}/receive', [GoodsReceiptController::class, 'store'])->name('purchasing.receive.store');
     });
+    Route::post('/purchasing/{purchaseOrder}/approve', [PurchaseOrderController::class, 'approve'])
+        ->middleware('permission:purchasing.approve')
+        ->name('purchasing.approve');
 
     Route::get('/sales', [SaleController::class, 'index'])->middleware('permission:sales.view')->name('sales.index');
     Route::get('/sales/{sale}/invoice', SalesInvoiceController::class)->middleware('permission:sales.view')->name('sales.invoice');

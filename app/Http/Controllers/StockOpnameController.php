@@ -141,6 +141,18 @@ class StockOpnameController extends Controller
                 ]);
             }
 
+            $existingProductIds->each(function (int $productId) use ($stockOpname): void {
+                StockBalance::query()->firstOrCreate([
+                    'product_id' => $productId,
+                    'warehouse_id' => $stockOpname->warehouse_id,
+                ], ['quantity' => 0]);
+            });
+            $balances = StockBalance::query()
+                ->where('warehouse_id', $stockOpname->warehouse_id)
+                ->whereIn('product_id', $existingProductIds)
+                ->lockForUpdate()
+                ->pluck('quantity', 'product_id');
+
             $oldValues = $stockOpname->toArray();
             $stockOpname->update([
                 'opname_date' => $validated['opname_date'],
@@ -150,6 +162,7 @@ class StockOpnameController extends Controller
             foreach ($stockOpname->items as $item) {
                 $submittedItem = $submittedItems->get($item->product_id);
                 $item->update([
+                    'system_quantity' => $balances->get($item->product_id, 0),
                     'physical_quantity' => $submittedItem['physical_quantity'],
                     'notes' => $submittedItem['notes'] ?? null,
                 ]);

@@ -28,7 +28,7 @@ class OpeningStockRequest extends FormRequest
             'warehouse_id' => ['required', Rule::exists('warehouses', 'id')->where('is_active', true)],
             'notes' => ['nullable', 'string', 'max:2000'],
             'items' => ['required', 'array', 'min:1'],
-            'items.*.product_id' => ['required', 'distinct:strict', Rule::exists('products', 'id')->where('is_active', true)],
+            'items.*.product_id' => ['required', 'distinct:strict', Rule::exists('products', 'id')->where('is_active', true)->whereNull('deleted_at')],
             'items.*.quantity' => ['required', 'numeric', 'gt:0'],
         ];
     }

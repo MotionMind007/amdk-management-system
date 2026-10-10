@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AuditLog;
 use App\Models\User;
 use App\UserRole;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
@@ -18,7 +19,7 @@ class AdminAccessTest extends TestCase
         $response = $this->actingAs($administrator)->post('/admin/users', [
             'name' => 'Operator Produksi',
             'email' => 'produksi@example.com',
-            'role' => UserRole::Production->value,
+            'role' => UserRole::Warehouse->value,
             'is_active' => true,
             'password' => 'password-baru',
             'password_confirmation' => 'password-baru',
@@ -27,10 +28,11 @@ class AdminAccessTest extends TestCase
         $response->assertRedirect(route('admin.users.index'));
         $this->assertDatabaseHas('users', [
             'email' => 'produksi@example.com',
-            'role' => UserRole::Production->value,
+            'role' => UserRole::Warehouse->value,
             'is_active' => true,
         ]);
         $this->assertDatabaseHas('audit_logs', ['action' => 'CREATE', 'module' => 'User']);
+        $this->assertSame('Menambahkan user Operator Produksi.', AuditLog::query()->sole()->description);
     }
 
     public function test_non_administrator_cannot_view_user_management_or_audit_log(): void

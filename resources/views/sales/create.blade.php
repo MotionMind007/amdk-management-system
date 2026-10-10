@@ -1,5 +1,6 @@
 <x-app-layout title="Buat Penjualan" module="sales" :module-data="config('modules.sales')">
     @php($selectedPaymentType = old('payment_type', 'cash'))
+    @php($selectedPaymentMethod = old('payment_method', 'cash'))
 
     <div class="max-w-4xl">
         <a href="{{ route('sales.index') }}" class="text-sm font-semibold text-brand-700">← Kembali</a>
@@ -35,14 +36,15 @@
                     @error('payment_type')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
                 </div>
                 <div data-cash-fields @class(['grid gap-1.5', 'hidden' => $selectedPaymentType !== 'cash'])>
-                    <label for="cash_account_id" class="text-sm font-medium">Masuk ke Kas/Bank</label>
-                    <select id="cash_account_id" name="cash_account_id" data-cash-account class="min-h-11 rounded-lg border border-slate-300 px-3 text-sm">
-                        <option value="">Pilih akun kas atau bank</option>
-                        @foreach ($cashAccounts as $account)
-                            <option value="{{ $account->id }}" @selected((int) old('cash_account_id') === $account->id)>{{ $account->name }} &mdash; Saldo Rp {{ number_format((float) $account->balance, 0, ',', '.') }}</option>
-                        @endforeach
+                    <label for="payment_method" class="text-sm font-medium">Metode Pembayaran</label>
+                    <select id="payment_method" name="payment_method" data-payment-method class="min-h-11 rounded-lg border border-slate-300 px-3 text-sm">
+                        <option value="cash" @selected($selectedPaymentMethod === 'cash')>Cash</option>
+                        <option value="transfer" @selected($selectedPaymentMethod === 'transfer')>Transfer</option>
                     </select>
-                    @error('cash_account_id')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
+                    @error('payment_method')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
+                    <div data-transfer-fields @class(['mt-2', 'hidden' => $selectedPaymentMethod !== 'transfer'])>
+                        <x-ui.input label="Nama Bank Pengirim" name="sender_bank" maxlength="100" data-sender-bank />
+                    </div>
                     <div class="mt-2 grid gap-2 sm:grid-cols-2">
                         @foreach ($cashAccounts as $account)
                             <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">

@@ -26,14 +26,14 @@ class ProductionRequest extends FormRequest
         return [
             'production_type' => ['required', Rule::enum(ProductionType::class)],
             'production_date' => ['required', 'date'],
-            'warehouse_id' => ['required', 'exists:warehouses,id'],
+            'warehouse_id' => ['required', Rule::exists('warehouses', 'id')->where('is_active', true)],
             'notes' => ['nullable', 'string', 'max:2000'],
             'items' => ['required', 'array', 'min:1'],
-            'items.*.product_id' => ['required', 'distinct', 'exists:products,id'],
+            'items.*.product_id' => ['required', 'distinct', Rule::exists('products', 'id')->where('is_active', true)->whereNull('deleted_at')],
             'items.*.quantity' => ['required', 'numeric', 'gt:0'],
             'items.*.rejected_quantity' => ['nullable', 'numeric', 'min:0'],
             'materials' => ['exclude_unless:production_type,packaging', 'required', 'array', 'min:1'],
-            'materials.*.product_id' => ['exclude_unless:production_type,packaging', 'required', 'distinct', 'exists:products,id'],
+            'materials.*.product_id' => ['exclude_unless:production_type,packaging', 'required', 'distinct', Rule::exists('products', 'id')->where('is_active', true)->whereNull('deleted_at')],
             'materials.*.quantity' => ['exclude_unless:production_type,packaging', 'required', 'numeric', 'gt:0'],
         ];
     }

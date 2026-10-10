@@ -24,8 +24,8 @@ class StoreInventoryAdjustmentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'product_id' => ['required', 'exists:products,id'],
-            'warehouse_id' => ['required', 'exists:warehouses,id'],
+            'product_id' => ['required', Rule::exists('products', 'id')->where('is_active', true)->whereNull('deleted_at')],
+            'warehouse_id' => ['required', Rule::exists('warehouses', 'id')->where('is_active', true)],
             'direction' => ['required', Rule::in(['in', 'out'])],
             'quantity' => ['required', 'numeric', 'gt:0'],
             'notes' => ['required', 'string', 'max:1000'],

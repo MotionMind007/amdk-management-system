@@ -28,6 +28,12 @@ class PurchasingService
                 throw ValidationException::withMessages(['status' => 'PO harus disetujui sebelum barang diterima.']);
             }
 
+            $purchaseOrder->load(['supplier', 'warehouse']);
+
+            if ($purchaseOrder->supplier === null || $purchaseOrder->supplier->status !== 'active') {
+                throw ValidationException::withMessages(['supplier_id' => 'Supplier tidak aktif atau tidak tersedia.']);
+            }
+
             $receipt = GoodsReceipt::create([
                 'number' => $this->numberService->next('GR'),
                 'purchase_order_id' => $purchaseOrder->id,

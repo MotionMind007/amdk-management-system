@@ -25,7 +25,7 @@ class StoreManualCashTransactionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'cash_account_id' => ['required', 'exists:cash_accounts,id'],
+            'cash_account_id' => ['required', Rule::exists('cash_accounts', 'id')->where('is_active', true)],
             'transaction_date' => ['required', 'date'],
             'direction' => ['required', Rule::in(['in', 'out'])],
             'expense_category' => ['exclude_unless:direction,out', 'required', Rule::enum(ExpenseCategory::class)],

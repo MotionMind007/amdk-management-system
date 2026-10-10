@@ -8,13 +8,14 @@ use App\Services\AuditService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class ProductCompositionController extends Controller
 {
     public function edit(Product $product): View
     {
-        abort_unless($product->type === ProductType::FinishedGood, 404);
+        abort_unless($product->type === ProductType::FinishedGood && $product->is_active, 404);
         $product->load('unit', 'compositions.component.unit');
         $components = Product::query()->where('id', '!=', $product->id)->where('is_active', true)->with('unit')->orderBy('name')->get();
 
@@ -23,10 +24,11 @@ class ProductCompositionController extends Controller
 
     public function update(Request $request, Product $product, AuditService $auditService): RedirectResponse
     {
+        abort_unless($product->type === ProductType::FinishedGood && $product->is_active, 404);
         $request->merge(['components' => collect($request->input('components', []))->filter(fn (array $component): bool => filled($component['product_id'] ?? null) || filled($component['quantity'] ?? null))->values()->all()]);
         $validated = $request->validate([
             'components' => ['required', 'array', 'min:1'],
-            'components.*.product_id' => ['required', 'distinct', 'exists:products,id'],
+            'components.*.product_id' => ['required', 'distinct', Rule::exists('products', 'id')->where('is_active', true)->whereNull('deleted_at')],
             'components.*.quantity' => ['required', 'numeric', 'gt:0'],
         ], [
             'components.required' => 'Tambahkan minimal satu bahan.',

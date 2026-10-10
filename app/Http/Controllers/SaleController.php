@@ -15,6 +15,7 @@ use App\Services\SalesService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class SaleController extends Controller
@@ -40,10 +41,43 @@ class SaleController extends Controller
     {
         $data = $request->validated();
         $sale = DB::transaction(function () use ($request, $data, $numbers, $audit): Sale {
-            $sale = Sale::create(['number' => $numbers->next('INV'), 'customer_id' => $data['customer_id'], 'warehouse_id' => $data['warehouse_id'], 'sale_date' => $data['sale_date'], 'payment_type' => $data['payment_type'], 'due_date' => $data['due_date'] ?? null, 'cash_account_id' => $data['cash_account_id'] ?? null, 'status' => 'draft', 'notes' => $data['notes'] ?? null, 'created_by' => $request->user()->id]);
+            $cashAccount = null;
+
+            if ($data['payment_type'] === 'cash') {
+                $accountType = $data['payment_method'] === 'transfer' ? 'bank' : 'cash';
+                $cashAccount = CashAccount::query()
+                    ->where('type', $accountType)
+                    ->where('is_active', true)
+                    ->orderBy('id')
+                    ->first();
+
+                if ($cashAccount === null) {
+                    throw ValidationException::withMessages([
+                        'payment_method' => $accountType === 'bank'
+                            ? 'Akun bank aktif belum tersedia.'
+                            : 'Akun kas aktif belum tersedia.',
+                    ]);
+                }
+            }
+
+            $sale = Sale::create([
+                'number' => $numbers->next('INV'),
+                'customer_id' => $data['customer_id'],
+                'warehouse_id' => $data['warehouse_id'],
+                'sale_date' => $data['sale_date'],
+                'payment_type' => $data['payment_type'],
+                'payment_method' => $data['payment_method'] ?? null,
+                'sender_bank' => $data['sender_bank'] ?? null,
+                'due_date' => $data['due_date'] ?? null,
+                'cash_account_id' => $cashAccount?->id,
+                'status' => 'draft',
+                'notes' => $data['notes'] ?? null,
+                'created_by' => $request->user()->id,
+            ]);
             foreach ($data['items'] as $item) {
                 $sale->items()->create(['product_id' => $item['product_id'], 'quantity' => $item['quantity'], 'unit_price' => $item['unit_price'], 'line_total' => bcmul($item['quantity'], $item['unit_price'], 2)]);
-            } $audit->record($request, 'CREATE', 'Sale', $sale, newValues: $sale->load('items')->toArray());
+            }
+            $audit->record($request, 'CREATE', 'Sale', $sale, newValues: $sale->load('items')->toArray());
 
             return $sale;
         });

@@ -34,6 +34,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const cashFields = form.querySelector('[data-cash-fields]');
         const dueDate = form.querySelector('[data-due-date]');
         const cashAccount = form.querySelector('[data-cash-account]');
+        const paymentMethod = form.querySelector('[data-payment-method]');
+        const transferFields = form.querySelector('[data-transfer-fields]');
+        const senderBank = form.querySelector('[data-sender-bank]');
 
         const updatePaymentFields = () => {
             const isCredit = paymentType?.value === 'credit';
@@ -50,9 +53,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 cashAccount.disabled = isCredit;
                 cashAccount.required = ! isCredit;
             }
+
+            if (paymentMethod) {
+                paymentMethod.disabled = isCredit;
+                paymentMethod.required = ! isCredit;
+            }
+
+            const isTransfer = ! isCredit && paymentMethod?.value === 'transfer';
+            transferFields?.classList.toggle('hidden', ! isTransfer);
+
+            if (senderBank) {
+                senderBank.disabled = ! isTransfer;
+                senderBank.required = isTransfer;
+            }
         };
 
         paymentType?.addEventListener('change', updatePaymentFields);
+        paymentMethod?.addEventListener('change', updatePaymentFields);
         updatePaymentFields();
     });
 

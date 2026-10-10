@@ -9,6 +9,7 @@ use App\Services\PaymentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class SupplierPaymentController extends Controller
@@ -22,7 +23,7 @@ class SupplierPaymentController extends Controller
 
     public function store(Request $request, PurchaseOrder $purchaseOrder, PaymentService $payments, AuditService $audit): RedirectResponse
     {
-        $data = $request->validate(['cash_account_id' => ['required', 'exists:cash_accounts,id'], 'amount' => ['required', 'numeric', 'gt:0'], 'notes' => ['nullable', 'string', 'max:1000']]);
+        $data = $request->validate(['cash_account_id' => ['required', Rule::exists('cash_accounts', 'id')->where('is_active', true)], 'amount' => ['required', 'numeric', 'gt:0'], 'notes' => ['nullable', 'string', 'max:1000']]);
         DB::transaction(function () use ($request, $purchaseOrder, $data, $payments, $audit): void {
             $payment = $payments->paySupplier($purchaseOrder, CashAccount::findOrFail($data['cash_account_id']), (string) $data['amount'], $request->user());
             $payment->update(['notes' => $data['notes'] ?? null]);

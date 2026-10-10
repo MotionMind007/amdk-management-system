@@ -29,7 +29,7 @@ class DatabaseSeeder extends Seeder
                 [
                     'name' => env('ADMIN_NAME', 'Administrator'),
                     'password' => $adminPassword,
-                    'role' => UserRole::Administrator,
+                    'role' => UserRole::SuperAdministrator,
                     'is_active' => true,
                     'email_verified_at' => now(),
                 ],

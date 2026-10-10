@@ -36,7 +36,7 @@ return [
         'navigation' => [
             ['label' => 'Purchase Order', 'route' => 'purchasing.index', 'active' => 'purchasing.index'],
             ['label' => 'Buat Purchase Order', 'route' => 'purchasing.create', 'active' => 'purchasing.create', 'permission' => 'purchasing.manage'],
-            ['label' => 'Supplier', 'route' => 'suppliers.index', 'active' => 'suppliers.*'],
+            ['label' => 'Supplier', 'route' => 'suppliers.index', 'active' => 'suppliers.*', 'permission' => 'suppliers.view'],
         ],
     ],
     'inventory' => [
@@ -110,7 +110,7 @@ return [
     'employees' => [
         'label' => 'Karyawan',
         'description' => 'Data identitas, jabatan, dan status karyawan.',
-        'permission' => 'system.manage',
+        'permission' => 'employees.manage',
         'icon' => 'employees',
         'color' => 'rose',
         'route' => 'employees.index',

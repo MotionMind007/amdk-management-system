@@ -33,7 +33,13 @@
                         <td class="px-5 py-4"><p class="text-slate-700">{{ $employee->position }}</p><p class="text-xs text-slate-500">{{ $employee->department }}</p></td>
                         <td class="px-5 py-4 text-slate-600">{{ $employee->join_date?->format('d/m/Y') ?? 'Belum diisi' }}</td>
                         <td class="px-5 py-4"><x-ui.badge :tone="$employee->status === 'active' ? 'green' : 'gray'">{{ $employee->status === 'active' ? 'Aktif' : 'Tidak aktif' }}</x-ui.badge></td>
-                        <td class="px-5 py-4 text-right"><a href="{{ route('employees.edit', $employee) }}" class="font-semibold text-brand-700">Edit</a></td>
+                        <td class="px-5 py-4 text-right">
+                            @if ($employee->user === null || auth()->user()->role->canAssign($employee->user->role))
+                                <a href="{{ route('employees.edit', $employee) }}" class="font-semibold text-brand-700">Edit</a>
+                            @else
+                                <span class="text-xs text-slate-400">Dilindungi</span>
+                            @endif
+                        </td>
                     </tr>
                 @empty
                     <tr><td colspan="6" class="p-6"><x-ui.empty-state title="Belum ada karyawan" description="Tambahkan data karyawan pertama." /></td></tr>
@@ -54,7 +60,11 @@
                     <div><dt class="text-xs text-slate-500">Departemen</dt><dd class="mt-1 text-slate-700">{{ $employee->department }}</dd></div>
                     <div><dt class="text-xs text-slate-500">Tanggal masuk</dt><dd class="mt-1 text-slate-700">{{ $employee->join_date?->format('d/m/Y') ?? 'Belum diisi' }}</dd></div>
                 </dl>
-                <a href="{{ route('employees.edit', $employee) }}" class="mt-4 block rounded-lg bg-slate-100 px-3 py-2 text-center text-sm font-semibold text-slate-700">Edit data</a>
+                @if ($employee->user === null || auth()->user()->role->canAssign($employee->user->role))
+                    <a href="{{ route('employees.edit', $employee) }}" class="mt-4 block rounded-lg bg-slate-100 px-3 py-2 text-center text-sm font-semibold text-slate-700">Edit data</a>
+                @else
+                    <p class="mt-4 rounded-lg bg-slate-50 px-3 py-2 text-center text-xs font-medium text-slate-400">Akun dilindungi</p>
+                @endif
             </article>
         @empty
             <x-ui.empty-state title="Belum ada karyawan" description="Tambahkan data karyawan pertama." />

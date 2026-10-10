@@ -35,7 +35,7 @@ class StockOpnameRequest extends FormRequest
             'notes' => ['nullable', 'string', 'max:2000'],
             'items' => ['required', 'array', 'min:1'],
             'items.*' => ['required', 'array:product_id,physical_quantity,notes'],
-            'items.*.product_id' => ['required', 'distinct:strict', Rule::exists('products', 'id')->where('is_active', true)],
+            'items.*.product_id' => ['required', 'distinct:strict', Rule::exists('products', 'id')->where('is_active', true)->whereNull('deleted_at')],
             'items.*.physical_quantity' => ['required', 'numeric', 'min:0'],
             'items.*.notes' => ['nullable', 'string', 'max:500'],
         ];

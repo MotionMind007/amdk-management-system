@@ -7,12 +7,18 @@ use App\Models\CashAccount;
 use App\Models\Product;
 use App\Models\PurchaseOrder;
 use App\Models\Supplier;
+use App\Models\User;
 use App\Models\Warehouse;
+use App\Notifications\GoodsReceiptExpected;
+use App\Notifications\PurchaseOrderAwaitingApproval;
 use App\Services\AuditService;
 use App\Services\DocumentNumberService;
+use App\UserRole;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class PurchaseOrderController extends Controller
@@ -21,7 +27,7 @@ class PurchaseOrderController extends Controller
     {
         $purchaseOrders = PurchaseOrder::query()
             ->with([
-                'goodsReceipts:id,purchase_order_id,number,receipt_date,status',
+                'goodsReceipts:id,purchase_order_id,number,receipt_date,status,proof_path',
                 'supplier:id,name',
                 'warehouse:id,name',
             ])
@@ -59,17 +65,65 @@ class PurchaseOrderController extends Controller
             return $po;
         });
 
+        $po->loadMissing('supplier:id,name');
+        $approvers = User::query()
+            ->where('is_active', true)
+            ->whereIn('role', [UserRole::Owner->value, UserRole::SuperAdministrator->value])
+            ->get();
+        Notification::send($approvers, new PurchaseOrderAwaitingApproval(
+            $po->id,
+            $po->number,
+            $po->supplier->name,
+            $request->user()->name,
+            $po->total,
+        ));
+
         return redirect()->route('purchasing.index')->with('success', "{$po->number} berhasil dibuat sebagai draft.");
     }
 
     public function approve(Request $request, PurchaseOrder $purchaseOrder, AuditService $audit): RedirectResponse
     {
-        abort_unless($purchaseOrder->status === 'draft', 422);
         DB::transaction(function () use ($request, $purchaseOrder, $audit): void {
+            $purchaseOrder = PurchaseOrder::query()
+                ->whereKey($purchaseOrder->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($purchaseOrder->status !== 'draft') {
+                throw ValidationException::withMessages(['status' => 'Hanya Purchase Order draft yang dapat disetujui.']);
+            }
+
+            $purchaseOrder->load(['supplier', 'warehouse', 'items.product']);
+
+            if ($purchaseOrder->supplier === null || $purchaseOrder->supplier->status !== 'active') {
+                throw ValidationException::withMessages(['supplier_id' => 'Supplier tidak aktif atau tidak tersedia.']);
+            }
+
+            if (! $purchaseOrder->warehouse->is_active) {
+                throw ValidationException::withMessages(['warehouse_id' => 'Gudang tidak aktif atau tidak tersedia.']);
+            }
+
+            if ($purchaseOrder->items->contains(fn ($item): bool => $item->product === null || ! $item->product->is_active)) {
+                throw ValidationException::withMessages(['items' => 'PO memuat produk atau bahan yang tidak aktif atau tidak tersedia.']);
+            }
+
             $old = $purchaseOrder->toArray();
             $purchaseOrder->update(['status' => 'approved', 'approved_by' => $request->user()->id, 'approved_at' => now()]);
             $audit->record($request, 'APPROVE', 'PurchaseOrder', $purchaseOrder, $old, $purchaseOrder->fresh()->toArray());
         });
+
+        $purchaseOrder->refresh()->loadMissing('supplier:id,name');
+        $warehouseUsers = User::query()
+            ->where('is_active', true)
+            ->where('role', UserRole::Warehouse->value)
+            ->get();
+        Notification::send($warehouseUsers, new GoodsReceiptExpected(
+            $purchaseOrder->id,
+            $purchaseOrder->number,
+            $purchaseOrder->supplier->name,
+            $request->user()->name,
+            $purchaseOrder->expected_date?->format('d/m/Y'),
+        ));
 
         return back()->with('success', 'Purchase Order disetujui dan siap diterima.');
     }

@@ -15,7 +15,7 @@
             <img src="{{ asset('images/premium-nanwani-robongholo-water-bottles.png') }}" alt="" class="absolute inset-0 size-full object-cover opacity-40" aria-hidden="true">
             <div class="absolute inset-0 bg-brand-950/45" aria-hidden="true"></div>
 
-            <p class="relative z-10 text-sm font-semibold uppercase tracking-[0.16em] text-white/80">Sistem Operasional AMDK</p>
+            <p class="relative z-10 text-sm font-semibold uppercase tracking-[0.16em] text-white/80">PT. AIR MINUM JAYAPURA ROBONGHOLO NANWANI</p>
             <div class="relative z-10 max-w-lg">
                 <p class="text-sm font-semibold uppercase tracking-[0.18em] text-sky-300">Sederhana · Cepat · Terpercaya</p>
                 <h1 class="mt-5 text-4xl font-semibold leading-tight">SISTEM OPERASIOAL & MANAGEMENT PABRIK AMDK DALAM SATU APLIKASI.</h1>

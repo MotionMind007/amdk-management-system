@@ -55,6 +55,24 @@ class InventoryService
         ?string $notes,
         ?CarbonInterface $occurredAt,
     ): StockMovement {
+        $isProductActive = $product->exists && Product::query()
+            ->whereKey($product->getKey())
+            ->where('is_active', true)
+            ->exists();
+
+        if (! $isProductActive) {
+            throw ValidationException::withMessages(['product_id' => 'Produk atau bahan tidak aktif atau tidak tersedia.']);
+        }
+
+        $isWarehouseActive = $warehouse->exists && Warehouse::query()
+            ->whereKey($warehouse->getKey())
+            ->where('is_active', true)
+            ->exists();
+
+        if (! $isWarehouseActive) {
+            throw ValidationException::withMessages(['warehouse_id' => 'Gudang tidak aktif atau tidak tersedia.']);
+        }
+
         if (! is_numeric($quantity) || (float) $quantity <= 0) {
             throw ValidationException::withMessages(['quantity' => 'Jumlah stok harus lebih besar dari nol.']);
         }
