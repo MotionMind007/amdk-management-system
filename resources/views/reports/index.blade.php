@@ -27,6 +27,15 @@
         <x-ui.stat-card label="Total hutang berjalan" :value="'Rp '.number_format((float) $payableTotal, 0, ',', '.')" tone="orange" />
     </section>
 
+    <section class="mt-6">
+        <div><h2 class="font-semibold text-slate-900">Laporan Detail</h2><p class="mt-1 text-sm text-slate-500">Buka, cari, cetak, atau unduh CSV untuk pengolahan di Excel.</p></div>
+        <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            @foreach (['sales' => 'Penjualan', 'purchases' => 'Penerimaan Pembelian', 'stock' => 'Pergerakan Stok', 'production' => 'Produksi', 'cash' => 'Kas & Bank', 'receivables' => 'Piutang', 'payables' => 'Hutang'] as $type => $label)
+                <a href="{{ route('reports.operational.show', ['type' => $type, 'start_date' => $startDate, 'end_date' => $endDate]) }}" class="rounded-xl border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-brand-300 hover:text-brand-700">{{ $label }} <span class="float-right text-brand-600">→</span></a>
+            @endforeach
+        </div>
+    </section>
+
     <section class="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div class="border-b border-slate-200 px-5 py-4">
             <h2 class="font-semibold text-slate-900">Penjualan per Produk</h2>

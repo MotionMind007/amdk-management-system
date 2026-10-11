@@ -5,10 +5,14 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreGoodsReceiptRequest;
 use App\Models\GoodsReceipt;
 use App\Models\PurchaseOrder;
+use App\Models\User;
+use App\Notifications\GoodsReceiptAwaitingInvoice;
 use App\Services\AuditService;
 use App\Services\PurchasingService;
+use App\UserRole;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -29,12 +33,25 @@ class GoodsReceiptController extends Controller
         $data = $request->validated();
         $proofPath = $request->file('proof')->store('goods-receipts');
 
+        $receipt = null;
         try {
-            DB::transaction(function () use ($request, $purchaseOrder, $data, $proofPath, $purchasing, $audit): void {
-                $receipt = $purchasing->receive($purchaseOrder, $data['quantities'], $request->user());
+            DB::transaction(function () use ($request, $purchaseOrder, $data, $proofPath, $purchasing, $audit, &$receipt): void {
+                $receipt = $purchasing->receive($purchaseOrder, $data['quantities'], $request->user(), $data['submission_token'] ?? null);
                 $receipt->update(['proof_path' => $proofPath]);
                 $audit->record($request, 'RECEIVE', 'GoodsReceipt', $receipt, newValues: $receipt->fresh()->toArray());
             });
+
+            $receipt->load('purchaseOrder.supplier:id,name');
+            $financeUsers = User::query()
+                ->where('is_active', true)
+                ->whereIn('role', [UserRole::Admin, UserRole::SuperAdministrator, UserRole::Owner])
+                ->get();
+            Notification::send($financeUsers, new GoodsReceiptAwaitingInvoice(
+                $receipt->id,
+                $receipt->number,
+                $receipt->purchaseOrder->number,
+                $receipt->purchaseOrder->supplier->name,
+            ));
         } catch (Throwable $exception) {
             Storage::delete($proofPath);
 

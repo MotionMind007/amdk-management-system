@@ -34,12 +34,12 @@ class PurchasingFlowTest extends TestCase
         $receipt = app(PurchasingService::class)->receive($purchaseOrder, [$item->id => '80'], $user);
 
         $this->assertSame('80.000', StockBalance::query()->firstOrFail()->quantity);
-        $this->assertSame('40000.00', $purchaseOrder->fresh()->outstanding_amount);
+        $this->assertSame('0.00', $purchaseOrder->fresh()->outstanding_amount);
         $this->assertSame('partially_received', $purchaseOrder->fresh()->status);
         $this->assertSame('40000.00', $receipt->total);
     }
 
-    public function test_cash_purchase_receipt_reduces_cash_without_creating_payable(): void
+    public function test_cash_purchase_receipt_waits_for_supplier_invoice_before_payment(): void
     {
         $user = User::factory()->create();
         $warehouse = Warehouse::factory()->create();
@@ -51,11 +51,11 @@ class PurchasingFlowTest extends TestCase
         app(PurchasingService::class)->receive($purchaseOrder, [$item->id => '80'], $user);
 
         $this->assertSame('80.000', StockBalance::query()->firstOrFail()->quantity);
-        $this->assertSame('40000.00', $purchaseOrder->fresh()->paid_amount);
+        $this->assertSame('0.00', $purchaseOrder->fresh()->paid_amount);
         $this->assertSame('0.00', $purchaseOrder->fresh()->outstanding_amount);
-        $this->assertSame('60000.00', $account->fresh()->balance);
-        $this->assertDatabaseCount('supplier_payments', 1);
-        $this->assertDatabaseCount('cash_transactions', 1);
+        $this->assertSame('100000.00', $account->fresh()->balance);
+        $this->assertDatabaseCount('supplier_payments', 0);
+        $this->assertDatabaseCount('cash_transactions', 0);
     }
 
     public function test_receipt_rejects_supplier_deactivated_after_purchase_order_approval(): void

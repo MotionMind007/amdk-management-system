@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable(['number', 'purchase_order_id', 'receipt_date', 'status', 'total', 'notes', 'proof_path', 'created_by', 'posted_at'])]
 class GoodsReceipt extends Model
@@ -26,5 +27,10 @@ class GoodsReceipt extends Model
     public function purchaseOrder(): BelongsTo
     {
         return $this->belongsTo(PurchaseOrder::class);
+    }
+
+    public function supplierInvoice(): HasOne
+    {
+        return $this->hasOne(SupplierInvoice::class);
     }
 }

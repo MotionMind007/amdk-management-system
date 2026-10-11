@@ -7,7 +7,9 @@ use App\Models\CashTransaction;
 use App\Models\DailyProductionItem;
 use App\Models\GoodsReceipt;
 use App\Models\PurchaseOrder;
+use App\Models\PurchaseReturn;
 use App\Models\Sale;
+use App\Models\SalesReturn;
 use App\ProductionType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,25 +23,37 @@ class ReportController extends Controller
         $startDate = $data['start_date'] ?? now()->startOfMonth()->format('Y-m-d');
         $endDate = $data['end_date'] ?? today()->format('Y-m-d');
 
+        $returnedItems = DB::table('sales_return_items')
+            ->select('sale_item_id')
+            ->selectRaw('SUM(quantity) as returned_quantity')
+            ->selectRaw('SUM(line_total) as returned_total')
+            ->groupBy('sale_item_id');
+
         $productSales = DB::table('sale_items')
             ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
             ->join('products', 'products.id', '=', 'sale_items.product_id')
             ->join('units', 'units.id', '=', 'products.unit_id')
-            ->whereNot('sales.status', 'draft')
+            ->leftJoinSub($returnedItems, 'returned_items', fn ($join) => $join->on('returned_items.sale_item_id', '=', 'sale_items.id'))
+            ->whereNotIn('sales.status', ['draft', 'cancelled'])
             ->whereDate('sales.sale_date', '>=', $startDate)
             ->whereDate('sales.sale_date', '<=', $endDate)
             ->groupBy('products.id', 'products.name', 'units.code')
             ->orderBy('products.name')
             ->select(['products.id', 'products.name', 'units.code as unit_code'])
-            ->selectRaw('SUM(sale_items.quantity) as quantity_sold')
-            ->selectRaw('SUM(sale_items.line_total) as sales_amount')
+            ->selectRaw('SUM(sale_items.quantity - COALESCE(returned_items.returned_quantity, 0)) as quantity_sold')
+            ->selectRaw('SUM(sale_items.line_total - COALESCE(returned_items.returned_total, 0)) as sales_amount')
             ->get();
+
+        $grossSales = Sale::query()->whereNotIn('status', ['draft', 'cancelled'])->whereDate('sale_date', '>=', $startDate)->whereDate('sale_date', '<=', $endDate)->sum('total');
+        $salesReturns = SalesReturn::query()->where('status', 'posted')->whereDate('return_date', '>=', $startDate)->whereDate('return_date', '<=', $endDate)->sum('total');
+        $grossPurchases = GoodsReceipt::query()->whereDate('receipt_date', '>=', $startDate)->whereDate('receipt_date', '<=', $endDate)->sum('total');
+        $purchaseReturns = PurchaseReturn::query()->where('status', 'posted')->whereDate('return_date', '>=', $startDate)->whereDate('return_date', '<=', $endDate)->sum('total');
 
         return view('reports.index', [
             'startDate' => $startDate,
             'endDate' => $endDate,
-            'salesTotal' => Sale::query()->whereNot('status', 'draft')->whereDate('sale_date', '>=', $startDate)->whereDate('sale_date', '<=', $endDate)->sum('total'),
-            'purchaseTotal' => GoodsReceipt::query()->whereDate('receipt_date', '>=', $startDate)->whereDate('receipt_date', '<=', $endDate)->sum('total'),
+            'salesTotal' => (float) $grossSales - (float) $salesReturns,
+            'purchaseTotal' => (float) $grossPurchases - (float) $purchaseReturns,
             'cashIn' => CashTransaction::query()->where('direction', 'in')->whereDate('transaction_date', '>=', $startDate)->whereDate('transaction_date', '<=', $endDate)->sum('amount'),
             'cashOut' => CashTransaction::query()->where('direction', 'out')->whereDate('transaction_date', '>=', $startDate)->whereDate('transaction_date', '<=', $endDate)->sum('amount'),
             'receivableTotal' => Sale::query()->sum('outstanding_amount'),
@@ -59,10 +73,16 @@ class ReportController extends Controller
         $endDate = $data['end_date'] ?? today()->format('Y-m-d');
 
         $salesRevenue = Sale::query()
-            ->whereNot('status', 'draft')
+            ->whereNotIn('status', ['draft', 'cancelled'])
             ->whereDate('sale_date', '>=', $startDate)
             ->whereDate('sale_date', '<=', $endDate)
             ->sum('total');
+        $salesReturns = SalesReturn::query()
+            ->where('status', 'posted')
+            ->whereDate('return_date', '>=', $startDate)
+            ->whereDate('return_date', '<=', $endDate)
+            ->sum('total');
+        $salesRevenue = (float) $salesRevenue - (float) $salesReturns;
 
         $otherIncome = CashTransaction::query()
             ->where('direction', 'in')
@@ -103,10 +123,14 @@ class ReportController extends Controller
             'expenseRows' => $expenseRows,
             'operatingExpenses' => $operatingExpenses,
             'profitBeforeHpp' => $totalIncome - (float) $operatingExpenses,
-            'purchaseReceived' => GoodsReceipt::query()
+            'purchaseReceived' => (float) GoodsReceipt::query()
                 ->where('status', 'posted')
                 ->whereDate('receipt_date', '>=', $startDate)
                 ->whereDate('receipt_date', '<=', $endDate)
+                ->sum('total') - (float) PurchaseReturn::query()
+                ->where('status', 'posted')
+                ->whereDate('return_date', '>=', $startDate)
+                ->whereDate('return_date', '<=', $endDate)
                 ->sum('total'),
         ]);
     }

@@ -12,12 +12,13 @@ use Illuminate\Validation\ValidationException;
 
 class ProductionService
 {
-    public function __construct(private InventoryService $inventoryService) {}
+    public function __construct(private InventoryService $inventoryService, private AccountingPeriodService $periods) {}
 
     public function post(DailyProduction $production, User $user): DailyProduction
     {
         return DB::transaction(function () use ($production, $user): DailyProduction {
             $production = DailyProduction::query()->whereKey($production->getKey())->lockForUpdate()->firstOrFail();
+            $this->periods->ensureOpen($production->production_date);
             if ($production->status !== 'draft') {
                 throw ValidationException::withMessages(['status' => 'Hanya rekap draft yang dapat diposting.']);
             }

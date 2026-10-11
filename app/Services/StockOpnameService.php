@@ -11,7 +11,7 @@ use Illuminate\Validation\ValidationException;
 
 class StockOpnameService
 {
-    public function __construct(private InventoryService $inventoryService) {}
+    public function __construct(private InventoryService $inventoryService, private AccountingPeriodService $periods) {}
 
     public function post(StockOpname $stockOpname, User $user): StockOpname
     {
@@ -20,6 +20,7 @@ class StockOpnameService
                 ->whereKey($stockOpname->getKey())
                 ->lockForUpdate()
                 ->firstOrFail();
+            $this->periods->ensureOpen($stockOpname->opname_date);
 
             if ($stockOpname->status !== 'draft') {
                 throw ValidationException::withMessages([

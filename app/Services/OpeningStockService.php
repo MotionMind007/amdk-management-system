@@ -11,7 +11,7 @@ use Illuminate\Validation\ValidationException;
 
 class OpeningStockService
 {
-    public function __construct(private InventoryService $inventoryService) {}
+    public function __construct(private InventoryService $inventoryService, private AccountingPeriodService $periods) {}
 
     public function post(OpeningStock $openingStock, User $user): OpeningStock
     {
@@ -20,6 +20,7 @@ class OpeningStockService
                 ->whereKey($openingStock->getKey())
                 ->lockForUpdate()
                 ->firstOrFail();
+            $this->periods->ensureOpen($openingStock->stock_date);
 
             if ($openingStock->status !== 'draft') {
                 throw ValidationException::withMessages(['status' => 'Stok awal ini sudah diposting dan tidak dapat diproses kembali.']);

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreInventoryAdjustmentRequest;
 use App\Models\Product;
 use App\Models\Warehouse;
+use App\Services\AccountingPeriodService;
 use App\Services\AuditService;
 use App\Services\InventoryService;
 use App\StockMovementType;
@@ -21,9 +22,10 @@ class InventoryAdjustmentController extends Controller
         ]);
     }
 
-    public function store(StoreInventoryAdjustmentRequest $request, InventoryService $inventory, AuditService $audit): RedirectResponse
+    public function store(StoreInventoryAdjustmentRequest $request, InventoryService $inventory, AuditService $audit, AccountingPeriodService $periods): RedirectResponse
     {
         $data = $request->validated();
+        $periods->ensureOpen(today());
         $product = Product::query()->with('unit:id,code')->findOrFail($data['product_id']);
         $warehouse = Warehouse::findOrFail($data['warehouse_id']);
         $method = $data['direction'] === 'in' ? 'increase' : 'decrease';

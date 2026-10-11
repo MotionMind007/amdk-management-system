@@ -35,15 +35,37 @@
                                 <p class="text-xs text-orange-700">Hutang Rp {{ number_format((float) $po->outstanding_amount, 0, ',', '.') }}</p>
                             </td>
                             <td class="px-5 py-4">
-                                <x-ui.badge :tone="in_array($po->status, ['completed'], true) ? 'green' : ($po->status === 'draft' ? 'gray' : 'blue')">{{ str($po->status)->replace('_', ' ')->title() }}</x-ui.badge>
+                                <div class="flex flex-wrap gap-1.5">
+                                    <x-ui.badge :tone="$po->status === 'completed' ? 'green' : (in_array($po->status, ['rejected', 'cancelled'], true) ? 'red' : ($po->status === 'draft' ? 'gray' : 'blue'))">{{ str($po->status)->replace('_', ' ')->title() }}</x-ui.badge>
+                                    @if ($po->return_status !== 'none')
+                                        <x-ui.badge tone="orange">Retur {{ $po->return_status === 'complete' ? 'Penuh' : 'Sebagian' }}</x-ui.badge>
+                                    @endif
+                                </div>
+                                @if ($po->status === 'rejected')<p class="mt-1 max-w-xs text-xs text-red-700">{{ $po->rejection_reason }}</p>@endif
+                                @if ($po->status === 'cancelled')<p class="mt-1 max-w-xs text-xs text-red-700">{{ $po->cancellation_reason }}</p>@endif
                             </td>
                             <td class="px-5 py-4 text-right">
                                 <div class="flex flex-wrap justify-end gap-2">
+                                    @if ($po->status !== 'cancelled')
+                                        <a href="{{ route('purchasing.print', $po) }}" target="_blank" rel="noopener" class="inline-flex min-h-11 items-center rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Cetak PO</a>
+                                    @endif
+                                    @if (in_array($po->status, ['draft', 'rejected'], true) && auth()->user()->hasPermission('purchasing.manage'))
+                                        <a href="{{ route('purchasing.edit', $po) }}" class="inline-flex min-h-11 items-center rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Edit</a>
+                                    @endif
                                     @if ($po->status === 'draft' && auth()->user()->hasPermission('purchasing.approve'))
                                         <form method="POST" action="{{ route('purchasing.approve', $po) }}">
                                             @csrf
                                             <x-ui.button type="submit">Setujui</x-ui.button>
                                         </form>
+                                        <details class="text-left">
+                                            <summary class="flex min-h-11 cursor-pointer list-none items-center rounded-lg border border-red-200 px-3 text-sm font-semibold text-red-700">Tolak</summary>
+                                            <form method="POST" action="{{ route('purchasing.reject', $po) }}" class="mt-2 grid min-w-64 gap-2 rounded-lg border border-red-200 bg-red-50 p-3">
+                                                @csrf
+                                                <label for="reject-reason-{{ $po->id }}" class="text-xs font-semibold text-red-800">Alasan penolakan</label>
+                                                <textarea id="reject-reason-{{ $po->id }}" name="reason" rows="2" required maxlength="2000" class="rounded-lg border border-red-200 px-3 py-2 text-sm"></textarea>
+                                                <button type="submit" class="min-h-10 rounded-lg bg-red-700 px-3 text-sm font-semibold text-white">Konfirmasi Tolak</button>
+                                            </form>
+                                        </details>
                                     @elseif (in_array($po->status, ['approved', 'partially_received'], true) && auth()->user()->hasPermission('purchasing.receive'))
                                         <a href="{{ route('purchasing.receive.create', $po) }}" class="inline-flex min-h-11 items-center rounded-lg bg-brand-600 px-3 text-sm font-semibold text-white">Terima Barang</a>
                                     @endif
@@ -53,10 +75,33 @@
                                         @if ($receipt->proof_path)
                                             <a href="{{ route('purchasing.receipts.proof', $receipt) }}" class="inline-flex min-h-11 items-center rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Unduh Bukti</a>
                                         @endif
+                                        @if (auth()->user()->hasPermission('purchasing.manage'))
+                                            <a href="{{ route('purchasing.returns.create', $receipt) }}" class="inline-flex min-h-11 items-center rounded-lg border border-orange-300 px-3 text-sm font-semibold text-orange-700 hover:bg-orange-50">Retur {{ $receipt->number }}</a>
+                                        @endif
+                                        @if ($receipt->supplierInvoice)
+                                            <a href="{{ route('purchasing.supplier-invoices.print', $receipt->supplierInvoice) }}" target="_blank" rel="noopener" class="inline-flex min-h-11 items-center rounded-lg border border-violet-300 px-3 text-sm font-semibold text-violet-700 hover:bg-violet-50">Tagihan {{ $receipt->supplierInvoice->number }}</a>
+                                            @if ((float) $receipt->supplierInvoice->outstanding_amount > 0 && auth()->user()->hasPermission('finance.manage'))
+                                                <a href="{{ route('finance.supplier-payment.create', $receipt->supplierInvoice) }}" class="inline-flex min-h-11 items-center rounded-lg bg-violet-700 px-3 text-sm font-semibold text-white">Bayar Tagihan</a>
+                                            @endif
+                                        @elseif (auth()->user()->hasPermission('finance.manage'))
+                                            <a href="{{ route('purchasing.supplier-invoices.create', $receipt) }}" class="inline-flex min-h-11 items-center rounded-lg border border-violet-300 px-3 text-sm font-semibold text-violet-700 hover:bg-violet-50">Catat Faktur Supplier</a>
+                                        @endif
                                     @endforeach
 
-                                    @if ((float) $po->outstanding_amount > 0 && auth()->user()->hasPermission('purchasing.manage'))
-                                        <a href="{{ route('finance.supplier-payment.create', $po) }}" class="inline-flex min-h-11 items-center rounded-lg border border-slate-300 px-3 text-sm font-semibold">Bayar</a>
+                                    @foreach ($po->purchaseReturns as $purchaseReturn)
+                                        <a href="{{ route('purchasing.returns.print', $purchaseReturn) }}" target="_blank" rel="noopener" class="inline-flex min-h-11 items-center rounded-lg border border-orange-300 px-3 text-sm font-semibold text-orange-700 hover:bg-orange-50">Nota {{ $purchaseReturn->number }}</a>
+                                    @endforeach
+
+                                    @if (in_array($po->status, ['draft', 'rejected', 'approved'], true) && auth()->user()->hasPermission('purchasing.manage'))
+                                        <details class="text-left">
+                                            <summary class="flex min-h-11 cursor-pointer list-none items-center rounded-lg border border-red-200 px-3 text-sm font-semibold text-red-700">Batalkan</summary>
+                                            <form method="POST" action="{{ route('purchasing.cancel', $po) }}" class="mt-2 grid min-w-64 gap-2 rounded-lg border border-red-200 bg-red-50 p-3">
+                                                @csrf
+                                                <label for="cancel-reason-{{ $po->id }}" class="text-xs font-semibold text-red-800">Alasan pembatalan</label>
+                                                <textarea id="cancel-reason-{{ $po->id }}" name="reason" rows="2" required maxlength="2000" class="rounded-lg border border-red-200 px-3 py-2 text-sm"></textarea>
+                                                <button type="submit" class="min-h-10 rounded-lg bg-red-700 px-3 text-sm font-semibold text-white">Konfirmasi Batalkan</button>
+                                            </form>
+                                        </details>
                                     @endif
                                 </div>
                             </td>

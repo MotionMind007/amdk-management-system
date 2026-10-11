@@ -20,6 +20,7 @@ class StoreGoodsReceiptRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'submission_token' => ['sometimes', 'nullable', 'uuid'],
             'quantities' => ['required', 'array'],
             'quantities.*' => ['nullable', 'numeric', 'min:0'],
             'proof' => ['required', File::image()->types(['jpg', 'jpeg', 'png', 'webp'])->max('5mb')],

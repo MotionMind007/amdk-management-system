@@ -6,6 +6,7 @@
 
         <form method="POST" action="{{ route('purchasing.receive.store', $purchaseOrder) }}" enctype="multipart/form-data" class="mt-7 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             @csrf
+            <input type="hidden" name="submission_token" value="{{ old('submission_token', (string) Str::uuid()) }}">
 
             <div class="grid gap-4">
                 @foreach ($purchaseOrder->items as $item)

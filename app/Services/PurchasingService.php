@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\CashAccount;
 use App\Models\GoodsReceipt;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
@@ -16,14 +15,17 @@ class PurchasingService
     public function __construct(
         private InventoryService $inventoryService,
         private DocumentNumberService $numberService,
-        private PaymentService $paymentService,
+        private AccountingPeriodService $periods,
+        private SubmissionTokenService $tokens,
     ) {}
 
     /** @param array<int, string> $quantities keyed by purchase order item id */
-    public function receive(PurchaseOrder $purchaseOrder, array $quantities, User $user): GoodsReceipt
+    public function receive(PurchaseOrder $purchaseOrder, array $quantities, User $user, ?string $submissionToken = null): GoodsReceipt
     {
-        return DB::transaction(function () use ($purchaseOrder, $quantities, $user): GoodsReceipt {
+        return DB::transaction(function () use ($purchaseOrder, $quantities, $user, $submissionToken): GoodsReceipt {
             $purchaseOrder = PurchaseOrder::query()->whereKey($purchaseOrder->getKey())->lockForUpdate()->firstOrFail();
+            $this->tokens->claim($submissionToken, $user, 'goods-receipt.create', $purchaseOrder);
+            $this->periods->ensureOpen(today());
             if (! in_array($purchaseOrder->status, ['approved', 'partially_received'], true)) {
                 throw ValidationException::withMessages(['status' => 'PO harus disetujui sebelum barang diterima.']);
             }
@@ -66,23 +68,11 @@ class PurchasingService
             }
 
             $receipt->update(['total' => $receiptTotal]);
-            $purchaseOrder->increment('outstanding_amount', $receiptTotal);
-
-            if ($purchaseOrder->payment_type === 'cash') {
-                $cashAccount = CashAccount::query()
-                    ->whereKey($purchaseOrder->cash_account_id)
-                    ->where('is_active', true)
-                    ->first();
-
-                if ($cashAccount === null) {
-                    throw ValidationException::withMessages(['cash_account_id' => 'Akun kas atau bank untuk pembelian cash tidak tersedia.']);
-                }
-
-                $this->paymentService->paySupplier($purchaseOrder, $cashAccount, $receiptTotal, $user);
-            }
-
             $hasRemaining = $purchaseOrder->items()->whereColumn('received_quantity', '<', 'ordered_quantity')->exists();
-            $purchaseOrder->update(['status' => $hasRemaining ? 'partially_received' : 'completed']);
+            $purchaseOrder->update([
+                'status' => $hasRemaining ? 'partially_received' : 'completed',
+                'return_status' => bccomp($purchaseOrder->returned_amount, '0', 2) === 1 ? 'partial' : 'none',
+            ]);
 
             return $receipt->fresh('items');
         });

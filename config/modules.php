@@ -49,6 +49,8 @@ return [
         'navigation' => [
             ['label' => 'Stok Barang', 'route' => 'inventory.index', 'active' => 'inventory.index'],
             ['label' => 'Pergerakan Stok', 'route' => 'inventory.movements', 'active' => 'inventory.movements'],
+            ['label' => 'Transfer Gudang', 'route' => 'inventory.transfers.index', 'active' => 'inventory.transfers.*', 'permission' => 'inventory.transfer'],
+            ['label' => 'Pengiriman Barang', 'route' => 'sales.deliveries.index', 'active' => 'sales.deliveries.*', 'permission' => 'sales.deliver'],
             ['label' => 'Stok Opname', 'route' => 'inventory.opnames.index', 'active' => 'inventory.opnames.*'],
             ['label' => 'Penyesuaian Stok', 'route' => 'inventory.adjustment.create', 'active' => 'inventory.adjustment.*', 'permission' => 'inventory.manage'],
             ['label' => 'Master Produk', 'route' => 'products.index', 'active' => 'products.*'],
@@ -65,6 +67,9 @@ return [
         'navigation' => [
             ['label' => 'Ringkasan Keuangan', 'route' => 'finance.index', 'active' => 'finance.index'],
             ['label' => 'Pemasukan / Pengeluaran', 'route' => 'finance.transactions.create', 'active' => 'finance.transactions.*', 'permission' => 'finance.manage'],
+            ['label' => 'Umur Piutang & Hutang', 'route' => 'finance.aging', 'active' => 'finance.aging'],
+            ['label' => 'Rekonsiliasi Kas / Bank', 'route' => 'finance.reconciliations.index', 'active' => 'finance.reconciliations.*', 'permission' => 'finance.manage'],
+            ['label' => 'Tutup Periode', 'route' => 'finance.periods.index', 'active' => 'finance.periods.*', 'permission' => 'finance.close'],
             ['label' => 'Laporan Sederhana', 'route' => 'reports.index', 'active' => 'reports.index'],
             ['label' => 'Laba Rugi', 'route' => 'reports.profit-loss', 'active' => 'reports.profit-loss'],
         ],
@@ -104,7 +109,7 @@ return [
         'route' => 'reports.index',
         'navigation' => [
             ['label' => 'Ringkasan Laporan', 'route' => 'reports.index', 'active' => 'reports.index'],
-            ['label' => 'Laba Rugi', 'route' => 'reports.profit-loss', 'active' => 'reports.profit-loss'],
+            ['label' => 'Laporan Penjualan', 'route' => 'reports.operational.show', 'parameters' => ['type' => 'sales'], 'active' => 'reports.operational.*'],
         ],
     ],
     'employees' => [
@@ -130,6 +135,8 @@ return [
             ['label' => 'User & Hak Akses', 'route' => 'admin.users.index', 'active' => 'admin.users.*'],
             ['label' => 'Stok Awal', 'route' => 'admin.opening-stocks.index', 'active' => 'admin.opening-stocks.*'],
             ['label' => 'Audit Log', 'route' => 'admin.audit-logs.index', 'active' => 'admin.audit-logs.*'],
+            ['label' => 'Backup Database', 'route' => 'admin.backups.index', 'active' => 'admin.backups.*'],
+            ['label' => 'Status Sistem', 'route' => 'admin.health', 'active' => 'admin.health'],
         ],
     ],
 ];

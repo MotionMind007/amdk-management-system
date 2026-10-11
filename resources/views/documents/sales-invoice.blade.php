@@ -59,6 +59,10 @@
         <div class="notes"><strong>Catatan:</strong> {{ $sale->notes ?: '-' }}</div>
         <div>
             <div class="total-row total-row--grand"><span>TOTAL</span><span>Rp {{ number_format((float) $sale->total, 0, ',', '.') }}</span></div>
+            @if ((float) $sale->returned_amount > 0)
+                <div class="total-row"><span>Retur</span><span>- Rp {{ number_format((float) $sale->returned_amount, 0, ',', '.') }}</span></div>
+                <div class="total-row"><span>Nilai bersih</span><span>Rp {{ number_format((float) $sale->total - (float) $sale->returned_amount, 0, ',', '.') }}</span></div>
+            @endif
             <div class="total-row"><span>Terbayar</span><span>Rp {{ number_format((float) $sale->paid_amount, 0, ',', '.') }}</span></div>
             <div class="total-row"><span>Sisa</span><span>Rp {{ number_format((float) $sale->outstanding_amount, 0, ',', '.') }}</span></div>
         </div>

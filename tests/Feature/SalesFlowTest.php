@@ -22,7 +22,7 @@ class SalesFlowTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
-    public function test_posted_credit_sale_reduces_stock_and_payment_reduces_receivable(): void
+    public function test_posted_credit_sale_keeps_stock_until_delivery_and_payment_reduces_receivable(): void
     {
         $user = User::factory()->create();
         $warehouse = Warehouse::factory()->create();
@@ -33,7 +33,8 @@ class SalesFlowTest extends TestCase
 
         app(SalesService::class)->post($sale, $user);
 
-        $this->assertSame('15.000', StockBalance::query()->firstOrFail()->quantity);
+        $this->assertSame('20.000', StockBalance::query()->firstOrFail()->quantity);
+        $this->assertSame('pending', $sale->fresh()->delivery_status);
         $this->assertSame('50000.00', $sale->fresh()->outstanding_amount);
         $this->assertSame('unpaid', $sale->fresh()->status);
 
@@ -59,7 +60,8 @@ class SalesFlowTest extends TestCase
 
         app(SalesService::class)->post($sale, $user);
 
-        $this->assertSame('15.000', StockBalance::query()->firstOrFail()->quantity);
+        $this->assertSame('20.000', StockBalance::query()->firstOrFail()->quantity);
+        $this->assertSame('pending', $sale->fresh()->delivery_status);
         $this->assertSame('50000.00', $sale->fresh()->paid_amount);
         $this->assertSame('0.00', $sale->fresh()->outstanding_amount);
         $this->assertSame('paid', $sale->fresh()->status);

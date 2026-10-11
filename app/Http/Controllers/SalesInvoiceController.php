@@ -9,7 +9,7 @@ class SalesInvoiceController extends Controller
 {
     public function __invoke(Sale $sale): View
     {
-        abort_if($sale->status === 'draft', 404);
+        abort_if(in_array($sale->status, ['draft', 'cancelled'], true), 404);
 
         $sale->load([
             'cashAccount:id,name',

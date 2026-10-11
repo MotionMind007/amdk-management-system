@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable(['sale_id', 'product_id', 'quantity', 'unit_price', 'line_total'])]
 class SaleItem extends Model
@@ -25,5 +26,15 @@ class SaleItem extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function returnItems(): HasMany
+    {
+        return $this->hasMany(SalesReturnItem::class);
+    }
+
+    public function deliveryNoteItems(): HasMany
+    {
+        return $this->hasMany(DeliveryNoteItem::class);
     }
 }

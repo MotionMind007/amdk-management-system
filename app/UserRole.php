@@ -25,8 +25,8 @@ enum UserRole: string
     public function permissions(): array
     {
         return match ($this) {
-            self::Admin => ['dashboard.view', 'reports.view', 'sales.view', 'sales.manage', 'purchasing.view', 'purchasing.manage', 'inventory.view', 'inventory.manage', 'finance.view', 'finance.manage', 'customers.view', 'customers.manage', 'suppliers.view', 'suppliers.manage', 'receivables.view', 'payables.view', 'employees.manage'],
-            self::Warehouse => ['dashboard.view', 'purchasing.view', 'purchasing.receive', 'inventory.view', 'inventory.manage', 'production.view', 'production.manage'],
+            self::Admin => ['dashboard.view', 'reports.view', 'sales.view', 'sales.manage', 'sales.deliver', 'purchasing.view', 'purchasing.manage', 'inventory.view', 'inventory.manage', 'inventory.transfer', 'finance.view', 'finance.manage', 'customers.view', 'customers.manage', 'suppliers.view', 'suppliers.manage', 'receivables.view', 'payables.view', 'employees.manage'],
+            self::Warehouse => ['dashboard.view', 'sales.deliver', 'purchasing.view', 'purchasing.receive', 'inventory.view', 'inventory.manage', 'inventory.transfer', 'production.view', 'production.manage'],
             self::Sales => ['dashboard.view', 'sales.view', 'sales.manage', 'inventory.view', 'customers.view', 'customers.manage', 'receivables.view'],
             self::SuperAdministrator, self::Owner => ['*'],
         };

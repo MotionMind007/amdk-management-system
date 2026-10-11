@@ -6,6 +6,7 @@ use App\ExpenseCategory;
 use App\Http\Requests\StoreManualCashTransactionRequest;
 use App\Models\CashAccount;
 use App\Models\CashTransaction;
+use App\Services\AccountingPeriodService;
 use App\Services\AuditService;
 use App\Services\DocumentNumberService;
 use Illuminate\Http\RedirectResponse;
@@ -23,11 +24,12 @@ class ManualCashTransactionController extends Controller
         ]);
     }
 
-    public function store(StoreManualCashTransactionRequest $request, DocumentNumberService $numbers, AuditService $audit): RedirectResponse
+    public function store(StoreManualCashTransactionRequest $request, DocumentNumberService $numbers, AuditService $audit, AccountingPeriodService $periods): RedirectResponse
     {
         $data = $request->validated();
 
-        DB::transaction(function () use ($request, $data, $numbers, $audit): void {
+        DB::transaction(function () use ($request, $data, $numbers, $audit, $periods): void {
+            $periods->ensureOpen($data['transaction_date']);
             $account = CashAccount::query()->whereKey($data['cash_account_id'])->lockForUpdate()->firstOrFail();
 
             if ($data['direction'] === 'out' && bccomp($account->balance, (string) $data['amount'], 2) === -1) {

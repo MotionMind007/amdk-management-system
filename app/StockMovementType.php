@@ -11,6 +11,8 @@ enum StockMovementType: string
     case Sale = 'sale';
     case Adjustment = 'adjustment';
     case StockOpname = 'stock_opname';
+    case TransferOut = 'transfer_out';
+    case TransferIn = 'transfer_in';
     case Reversal = 'reversal';
 
     public function label(): string
@@ -23,6 +25,8 @@ enum StockMovementType: string
             self::Sale => 'Penjualan',
             self::Adjustment => 'Penyesuaian Stok',
             self::StockOpname => 'Stok Opname',
+            self::TransferOut => 'Transfer Keluar',
+            self::TransferIn => 'Transfer Masuk',
             self::Reversal => 'Pembalikan Transaksi',
         };
     }

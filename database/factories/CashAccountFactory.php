@@ -18,7 +18,11 @@ class CashAccountFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'code' => 'CASH-'.fake()->unique()->numerify('####'),
+            'name' => fake()->unique()->company().' Bank',
+            'type' => fake()->randomElement(['cash', 'bank']),
+            'balance' => 0,
+            'is_active' => true,
         ];
     }
 }
