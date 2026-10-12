@@ -223,5 +223,4 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/reports', [ReportController::class, 'index'])->middleware('permission:reports.view')->name('reports.index');
     Route::get('/reports/operational/{type}', [OperationalReportController::class, 'show'])->middleware('permission:reports.view')->whereIn('type', ['sales', 'purchases', 'stock', 'production', 'cash', 'receivables', 'payables'])->name('reports.operational.show');
     Route::get('/reports/operational/{type}/export', [OperationalReportController::class, 'export'])->middleware('permission:reports.view')->whereIn('type', ['sales', 'purchases', 'stock', 'production', 'cash', 'receivables', 'payables'])->name('reports.operational.export');
-    Route::get('/reports/profit-loss', [ReportController::class, 'profitLoss'])->middleware('permission:reports.view')->name('reports.profit-loss');
 });

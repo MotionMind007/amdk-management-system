@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\ExpenseCategory;
 use App\Models\CashAccount;
 use App\Models\CashTransaction;
 use App\Models\Customer;
@@ -12,6 +11,7 @@ use App\Models\Product;
 use App\Models\PurchaseOrder;
 use App\Models\Sale;
 use App\Models\Supplier;
+use App\Models\SupplierInvoice;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\ProductType;
@@ -67,7 +67,7 @@ class ReportControllerTest extends TestCase
             'outstanding_amount' => 750000,
             'created_by' => $user->id,
         ]);
-        GoodsReceipt::create([
+        $goodsReceipt = GoodsReceipt::create([
             'number' => 'GR-2026-000001',
             'purchase_order_id' => $purchaseOrder->id,
             'receipt_date' => $transactionDate,
@@ -75,6 +75,19 @@ class ReportControllerTest extends TestCase
             'total' => 750000,
             'created_by' => $user->id,
             'posted_at' => $transactionDate,
+        ]);
+        SupplierInvoice::query()->create([
+            'number' => 'BILL-2026-000001',
+            'goods_receipt_id' => $goodsReceipt->id,
+            'purchase_order_id' => $purchaseOrder->id,
+            'supplier_invoice_number' => 'SUP-INV-001',
+            'invoice_date' => $transactionDate,
+            'due_date' => '2026-11-08',
+            'status' => 'unpaid',
+            'total' => 750000,
+            'paid_amount' => 0,
+            'outstanding_amount' => 750000,
+            'created_by' => $user->id,
         ]);
 
         $cashAccount = CashAccount::create([
@@ -112,6 +125,7 @@ class ReportControllerTest extends TestCase
         $this->assertSame(595.0, (float) $response->viewData('productionTotal'));
         $this->assertSame(3000000.0, (float) $response->viewData('cashIn'));
         $this->assertSame(500000.0, (float) $response->viewData('cashOut'));
+        $this->assertSame(750000.0, (float) $response->viewData('payableTotal'));
     }
 
     public function test_report_groups_sold_quantity_and_value_by_product(): void
@@ -195,80 +209,10 @@ class ReportControllerTest extends TestCase
         $this->assertSame(100000.0, (float) $productSales->get('Nanwani 600ml')->sales_amount);
     }
 
-    public function test_profit_loss_report_calculates_revenue_and_manual_operating_expenses_without_double_counting_payments(): void
+    public function test_profit_loss_report_is_unavailable_while_hpp_is_on_hold(): void
     {
         $user = User::factory()->administrator()->create();
-        $warehouse = Warehouse::factory()->create();
-        $cashAccount = CashAccount::create([
-            'code' => 'KAS-PL',
-            'name' => 'Kas Laba Rugi',
-            'type' => 'cash',
-            'balance' => 5000000,
-            'is_active' => true,
-        ]);
 
-        Sale::create([
-            'number' => 'INV-PL-001',
-            'customer_id' => Customer::factory()->create()->id,
-            'warehouse_id' => $warehouse->id,
-            'sale_date' => '2026-10-05',
-            'status' => 'paid',
-            'total' => 3000000,
-            'paid_amount' => 3000000,
-            'outstanding_amount' => 0,
-            'created_by' => $user->id,
-            'posted_at' => '2026-10-05',
-        ]);
-
-        CashTransaction::create([
-            'cash_account_id' => $cashAccount->id,
-            'transaction_date' => '2026-10-05',
-            'direction' => 'in',
-            'amount' => 3000000,
-            'source_type' => 'customer_payment',
-            'source_id' => 1,
-            'description' => 'Pembayaran penjualan',
-            'user_id' => $user->id,
-        ]);
-        CashTransaction::create([
-            'cash_account_id' => $cashAccount->id,
-            'transaction_date' => '2026-10-06',
-            'direction' => 'in',
-            'amount' => 200000,
-            'description' => 'Pendapatan lain',
-            'user_id' => $user->id,
-        ]);
-        CashTransaction::create([
-            'cash_account_id' => $cashAccount->id,
-            'transaction_date' => '2026-10-07',
-            'direction' => 'out',
-            'expense_category' => ExpenseCategory::Electricity,
-            'amount' => 500000,
-            'description' => 'Pembayaran listrik',
-            'user_id' => $user->id,
-        ]);
-        CashTransaction::create([
-            'cash_account_id' => $cashAccount->id,
-            'transaction_date' => '2026-10-07',
-            'direction' => 'out',
-            'amount' => 750000,
-            'source_type' => 'supplier_payment',
-            'source_id' => 1,
-            'description' => 'Pembayaran supplier',
-            'user_id' => $user->id,
-        ]);
-
-        $response = $this->actingAs($user)->get(route('reports.profit-loss', [
-            'start_date' => '2026-10-01',
-            'end_date' => '2026-10-31',
-        ]));
-
-        $response->assertOk()
-            ->assertSee('Laba Rugi Sederhana')
-            ->assertSee('Listrik');
-        $this->assertSame(3000000.0, (float) $response->viewData('salesRevenue'));
-        $this->assertSame(200000.0, (float) $response->viewData('otherIncome'));
-        $this->assertSame(500000.0, (float) $response->viewData('operatingExpenses'));
-        $this->assertSame(2700000.0, (float) $response->viewData('profitBeforeHpp'));
+        $this->actingAs($user)->get('/reports/profit-loss')->assertNotFound();
     }
 }

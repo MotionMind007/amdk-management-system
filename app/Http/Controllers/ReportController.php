@@ -6,10 +6,10 @@ use App\ExpenseCategory;
 use App\Models\CashTransaction;
 use App\Models\DailyProductionItem;
 use App\Models\GoodsReceipt;
-use App\Models\PurchaseOrder;
 use App\Models\PurchaseReturn;
 use App\Models\Sale;
 use App\Models\SalesReturn;
+use App\Models\SupplierInvoice;
 use App\ProductionType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -57,7 +57,7 @@ class ReportController extends Controller
             'cashIn' => CashTransaction::query()->where('direction', 'in')->whereDate('transaction_date', '>=', $startDate)->whereDate('transaction_date', '<=', $endDate)->sum('amount'),
             'cashOut' => CashTransaction::query()->where('direction', 'out')->whereDate('transaction_date', '>=', $startDate)->whereDate('transaction_date', '<=', $endDate)->sum('amount'),
             'receivableTotal' => Sale::query()->sum('outstanding_amount'),
-            'payableTotal' => PurchaseOrder::query()->sum('outstanding_amount'),
+            'payableTotal' => SupplierInvoice::query()->sum('outstanding_amount'),
             'productionTotal' => DailyProductionItem::query()->whereHas('production', fn ($query) => $query->where('production_type', ProductionType::FinishedGood)->where('status', 'posted')->whereDate('production_date', '>=', $startDate)->whereDate('production_date', '<=', $endDate))->sum('quantity'),
             'productSales' => $productSales,
         ]);

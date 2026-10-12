@@ -71,7 +71,6 @@ return [
             ['label' => 'Rekonsiliasi Kas / Bank', 'route' => 'finance.reconciliations.index', 'active' => 'finance.reconciliations.*', 'permission' => 'finance.manage'],
             ['label' => 'Tutup Periode', 'route' => 'finance.periods.index', 'active' => 'finance.periods.*', 'permission' => 'finance.close'],
             ['label' => 'Laporan Sederhana', 'route' => 'reports.index', 'active' => 'reports.index'],
-            ['label' => 'Laba Rugi', 'route' => 'reports.profit-loss', 'active' => 'reports.profit-loss'],
         ],
     ],
     'customers' => [
