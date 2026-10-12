@@ -3,6 +3,7 @@
 use App\Http\Controllers\AccountingPeriodController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\BackupController;
+use App\Http\Controllers\Admin\DataImportController;
 use App\Http\Controllers\Admin\OpeningStockController;
 use App\Http\Controllers\Admin\SystemHealthController;
 use App\Http\Controllers\Admin\UserController;
@@ -125,6 +126,10 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/backups', [BackupController::class, 'store'])->middleware('throttle:2,10')->name('backups.store');
         Route::get('/backups/{filename}', [BackupController::class, 'download'])->where('filename', '[a-zA-Z0-9._-]+')->name('backups.download');
         Route::get('/health', SystemHealthController::class)->name('health');
+        Route::get('/data-imports', [DataImportController::class, 'index'])->name('data-imports.index');
+        Route::get('/data-imports/{type}/template', [DataImportController::class, 'template'])->name('data-imports.template');
+        Route::post('/data-imports/preview', [DataImportController::class, 'preview'])->name('data-imports.preview');
+        Route::post('/data-imports/{token}/confirm', [DataImportController::class, 'confirm'])->whereUuid('token')->name('data-imports.confirm');
         Route::resource('opening-stocks', OpeningStockController::class)->except(['show', 'destroy']);
         Route::post('/opening-stocks/{openingStock}/post', [OpeningStockController::class, 'post'])->name('opening-stocks.post');
     });

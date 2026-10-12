@@ -133,6 +133,7 @@ return [
         'navigation' => [
             ['label' => 'User & Hak Akses', 'route' => 'admin.users.index', 'active' => 'admin.users.*'],
             ['label' => 'Stok Awal', 'route' => 'admin.opening-stocks.index', 'active' => 'admin.opening-stocks.*'],
+            ['label' => 'Migrasi Data', 'route' => 'admin.data-imports.index', 'active' => 'admin.data-imports.*'],
             ['label' => 'Audit Log', 'route' => 'admin.audit-logs.index', 'active' => 'admin.audit-logs.*'],
             ['label' => 'Backup Database', 'route' => 'admin.backups.index', 'active' => 'admin.backups.*'],
             ['label' => 'Status Sistem', 'route' => 'admin.health', 'active' => 'admin.health'],
