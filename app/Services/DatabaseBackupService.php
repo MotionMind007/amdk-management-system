@@ -30,11 +30,31 @@ class DatabaseBackupService
         return ['filename' => $filename, 'size' => Storage::disk('local')->size($relativePath), 'created_at' => Storage::disk('local')->lastModified($relativePath)];
     }
 
-    /** @return list<array{filename: string, size: int, created_at: int}> */
+    /** @return list<array{filename: string, size: int, created_at: int, verified_at: int|null}> */
     public function all(): array
     {
         return collect(Storage::disk('local')->files('backups'))
-            ->map(fn (string $path): array => ['filename' => basename($path), 'size' => Storage::disk('local')->size($path), 'created_at' => Storage::disk('local')->lastModified($path)])
+            ->filter(fn (string $path): bool => preg_match('/\Adatabase-[a-zA-Z0-9._-]+\.sql\z/', basename($path)) === 1)
+            ->map(function (string $path): array {
+                $verificationPath = $path.'.verified.json';
+                $verification = Storage::disk('local')->exists($verificationPath)
+                    ? json_decode(Storage::disk('local')->get($verificationPath), true)
+                    : null;
+                $checksum = hash_file('sha256', Storage::disk('local')->path($path));
+                $verifiedAt = is_array($verification)
+                    && is_string($verification['checksum'] ?? null)
+                    && is_string($checksum)
+                    && hash_equals($checksum, $verification['checksum'])
+                        ? (int) ($verification['verified_at'] ?? 0)
+                        : null;
+
+                return [
+                    'filename' => basename($path),
+                    'size' => Storage::disk('local')->size($path),
+                    'created_at' => Storage::disk('local')->lastModified($path),
+                    'verified_at' => $verifiedAt ?: null,
+                ];
+            })
             ->sortByDesc('created_at')
             ->values()
             ->all();
@@ -77,9 +97,9 @@ class DatabaseBackupService
 
     private function backupPostgres(string $absolutePath): void
     {
-        $connection = config('database.connections.pgsql');
+        $connection = DB::connection()->getConfig();
         $process = new Process([
-            'pg_dump', '--format=plain', '--no-owner', '--no-privileges',
+            (string) config('operations.database_backup.pg_dump_binary'), '--format=plain', '--no-owner', '--no-privileges',
             '--host='.(string) $connection['host'], '--port='.(string) $connection['port'],
             '--username='.(string) $connection['username'], '--dbname='.(string) $connection['database'],
             '--file='.$absolutePath,

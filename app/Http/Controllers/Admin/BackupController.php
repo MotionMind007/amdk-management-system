@@ -28,7 +28,7 @@ class BackupController extends Controller
 
     public function download(string $filename): StreamedResponse
     {
-        abort_unless(basename($filename) === $filename && preg_match('/\Adatabase-[a-zA-Z0-9._-]+\z/', $filename) === 1, 404);
+        abort_unless(basename($filename) === $filename && preg_match('/\Adatabase-[a-zA-Z0-9._-]+\.sql\z/', $filename) === 1, 404);
         $path = 'backups/'.$filename;
         abort_unless(Storage::disk('local')->exists($path), 404);
 

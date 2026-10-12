@@ -52,6 +52,9 @@ jobs:
           node-version: '22'
           cache: npm
 
+      - name: Install PostgreSQL client tools
+        run: sudo apt-get update && sudo apt-get install --yes postgresql-client
+
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
@@ -72,5 +75,22 @@ jobs:
       - name: Run test suite on PostgreSQL
         run: php artisan test --compact
 
+      - name: Validate production readiness
+        env:
+          APP_ENV: production
+          APP_DEBUG: false
+          APP_URL: https://staging.example.com
+          APP_TIMEZONE: Asia/Jayapura
+          CACHE_STORE: database
+          LOG_CHANNEL: stderr
+          LOG_LEVEL: warning
+          QUEUE_CONNECTION: database
+          SESSION_DRIVER: database
+          SESSION_SECURE_COOKIE: true
+        run: php artisan system:check-deployment
+
       - name: Audit PHP dependencies
         run: composer audit
+
+      - name: Audit frontend dependencies
+        run: npm audit --audit-level=high
