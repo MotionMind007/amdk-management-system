@@ -16,6 +16,16 @@
         </div>
     </header>
 
+    @if ($purchaseOrder->status === 'draft')
+        <section style="margin-top: 7px; border: 1px solid #000; padding: 5px; text-align: center; font-weight: 700; letter-spacing: .06em;">
+            DRAFT — BELUM DISETUJUI
+        </section>
+    @elseif ($purchaseOrder->status === 'rejected')
+        <section style="margin-top: 7px; border: 1px solid #000; padding: 5px; text-align: center; font-weight: 700; letter-spacing: .06em;">
+            DITOLAK — PERLU DIREVISI
+        </section>
+    @endif
+
     <section class="meta-grid">
         <div>
             <div class="meta-row"><span>Supplier</span><span>:</span><strong>{{ $purchaseOrder->supplier->name }}</strong></div>

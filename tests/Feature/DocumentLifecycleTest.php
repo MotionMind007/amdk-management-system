@@ -24,6 +24,7 @@ use App\Services\SupplierInvoiceService;
 use App\StockMovementType;
 use App\UserRole;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class DocumentLifecycleTest extends TestCase
@@ -307,6 +308,64 @@ class DocumentLifecycleTest extends TestCase
             ->assertSeeText('Supplier Papua')
             ->assertSeeText('Preform 330ml')
             ->assertSeeText('Cetak PO');
+    }
+
+    #[DataProvider('purchaseOrderPreviewRoles')]
+    public function test_owner_and_warehouse_can_preview_a_draft_purchase_order(UserRole $role): void
+    {
+        $creator = User::factory()->create(['role' => UserRole::Admin]);
+        $viewer = User::factory()->create(['role' => $role]);
+        $purchaseOrder = $this->purchaseOrder(
+            $creator,
+            Supplier::factory()->create(['name' => 'Supplier Draft UAT']),
+            Warehouse::factory()->create(),
+            'draft',
+            'PO-DRAFT-PREVIEW',
+        );
+        $product = Product::factory()->create(['name' => 'Preform Draft UAT']);
+        $purchaseOrder->items()->create([
+            'product_id' => $product->id,
+            'ordered_quantity' => 10,
+            'unit_price' => 1000,
+            'line_total' => 10000,
+        ]);
+
+        $this->actingAs($viewer)
+            ->get(route('purchasing.index'))
+            ->assertOk()
+            ->assertSeeText('Preview PO');
+
+        $this->actingAs($viewer)
+            ->get(route('purchasing.print', $purchaseOrder))
+            ->assertOk()
+            ->assertSeeText('PO-DRAFT-PREVIEW')
+            ->assertSeeText('DRAFT — BELUM DISETUJUI')
+            ->assertSeeText('Cetak PO');
+    }
+
+    /** @return array<string, array{UserRole}> */
+    public static function purchaseOrderPreviewRoles(): array
+    {
+        return [
+            'owner' => [UserRole::Owner],
+            'warehouse' => [UserRole::Warehouse],
+        ];
+    }
+
+    public function test_sales_user_cannot_preview_a_purchase_order(): void
+    {
+        $creator = User::factory()->create(['role' => UserRole::Admin]);
+        $purchaseOrder = $this->purchaseOrder(
+            $creator,
+            Supplier::factory()->create(),
+            Warehouse::factory()->create(),
+            'draft',
+            'PO-FORBIDDEN-PREVIEW',
+        );
+
+        $this->actingAs(User::factory()->create(['role' => UserRole::Sales]))
+            ->get(route('purchasing.print', $purchaseOrder))
+            ->assertForbidden();
     }
 
     public function test_warehouse_cannot_post_purchase_or_sales_returns(): void

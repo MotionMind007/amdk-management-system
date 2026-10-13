@@ -47,7 +47,7 @@
                             <td class="px-5 py-4 text-right">
                                 <div class="flex flex-wrap justify-end gap-2">
                                     @if ($po->status !== 'cancelled')
-                                        <a href="{{ route('purchasing.print', $po) }}" target="_blank" rel="noopener" class="inline-flex min-h-11 items-center rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Cetak PO</a>
+                                        <a href="{{ route('purchasing.print', $po) }}" target="_blank" rel="noopener" class="inline-flex min-h-11 items-center rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Preview PO</a>
                                     @endif
                                     @if (in_array($po->status, ['draft', 'rejected'], true) && auth()->user()->hasPermission('purchasing.manage'))
                                         <a href="{{ route('purchasing.edit', $po) }}" class="inline-flex min-h-11 items-center rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Edit</a>
