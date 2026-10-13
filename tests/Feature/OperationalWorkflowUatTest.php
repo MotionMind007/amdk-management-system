@@ -210,6 +210,7 @@ class OperationalWorkflowUatTest extends TestCase
         $this->assertSame('30.000', $this->stockQuantity($finishedGood, $warehouse));
 
         $this->actingAs($salesUser)->post(route('finance.customer-payment.store', $sale), [
+            'payment_method' => 'cash',
             'cash_account_id' => $cashAccount->id,
             'payment_date' => '2026-10-12',
             'amount' => 20000,

@@ -73,6 +73,44 @@ document.addEventListener('DOMContentLoaded', () => {
         updatePaymentFields();
     });
 
+    document.querySelectorAll('[data-customer-payment-form]').forEach((form) => {
+        const paymentMethod = form.querySelector('[data-customer-payment-method]');
+        const cashAccount = form.querySelector('[data-customer-cash-account]');
+        const transferFields = form.querySelector('[data-customer-transfer-fields]');
+        const senderBank = form.querySelector('[data-customer-sender-bank]');
+        const proof = form.querySelector('[data-customer-payment-proof]');
+
+        const updateCustomerPaymentFields = () => {
+            const isTransfer = paymentMethod?.value === 'transfer';
+            const expectedAccountType = isTransfer ? 'bank' : 'cash';
+
+            transferFields?.classList.toggle('hidden', ! isTransfer);
+
+            if (senderBank) {
+                senderBank.disabled = ! isTransfer;
+                senderBank.required = isTransfer;
+            }
+
+            if (proof) {
+                proof.required = isTransfer;
+            }
+
+            if (cashAccount) {
+                Array.from(cashAccount.options).forEach((option) => {
+                    option.disabled = option.dataset.accountType !== expectedAccountType;
+                });
+
+                if (cashAccount.selectedOptions[0]?.disabled) {
+                    const firstAvailableAccount = Array.from(cashAccount.options).find((option) => ! option.disabled);
+                    cashAccount.value = firstAvailableAccount?.value ?? '';
+                }
+            }
+        };
+
+        paymentMethod?.addEventListener('change', updateCustomerPaymentFields);
+        updateCustomerPaymentFields();
+    });
+
     document.querySelectorAll('[data-cash-transaction-form]').forEach((form) => {
         const direction = form.querySelector('[data-cash-direction]');
         const categoryFields = form.querySelector('[data-expense-category-fields]');

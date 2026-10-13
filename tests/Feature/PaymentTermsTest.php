@@ -86,6 +86,34 @@ class PaymentTermsTest extends TestCase
             'sender_bank' => null,
             'due_date' => null,
             'cash_account_id' => $cashAccount->id,
+            'total' => 50000,
+        ]);
+    }
+
+    public function test_credit_sale_draft_stores_the_total_from_its_items(): void
+    {
+        $user = User::factory()->administrator()->create();
+        $customer = Customer::factory()->create();
+        $warehouse = Warehouse::factory()->create();
+        $product = Product::factory()->create(['type' => ProductType::FinishedGood]);
+
+        $response = $this->actingAs($user)->post(route('sales.store'), [
+            'customer_id' => $customer->id,
+            'warehouse_id' => $warehouse->id,
+            'sale_date' => '2026-10-08',
+            'payment_type' => 'credit',
+            'due_date' => '2026-10-22',
+            'items' => [
+                ['product_id' => $product->id, 'quantity' => 3, 'unit_price' => 120000],
+            ],
+        ]);
+
+        $response->assertRedirect(route('sales.index'));
+        $this->assertDatabaseHas('sales', [
+            'payment_type' => 'credit',
+            'status' => 'draft',
+            'total' => 360000,
+            'outstanding_amount' => 0,
         ]);
     }
 

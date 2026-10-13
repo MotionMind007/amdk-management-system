@@ -38,6 +38,8 @@ class CustomerPaymentController extends Controller
                 $data['notes'] ?? null,
                 $proofPath,
                 $data['submission_token'] ?? null,
+                $data['payment_method'],
+                $data['sender_bank'] ?? null,
             );
             $audit->record($request, 'PAYMENT', 'Receivable', $payment, newValues: $payment->toArray());
         } catch (Throwable $exception) {

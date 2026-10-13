@@ -55,7 +55,7 @@ class SaleController extends Controller
                 'created_by' => $request->user()->id,
                 ...$this->headerValues($data),
             ]);
-            $this->replaceItems($sale, $data['items']);
+            $sale->update(['total' => $this->replaceItems($sale, $data['items'])]);
             $audit->record($request, 'CREATE', 'Sale', $sale, newValues: $sale->load('items')->toArray());
 
             return $sale;
@@ -80,7 +80,7 @@ class SaleController extends Controller
             $this->ensureEditable($sale);
             $old = $sale->load('items')->toArray();
             $sale->update($this->headerValues($data));
-            $this->replaceItems($sale, $data['items']);
+            $sale->update(['total' => $this->replaceItems($sale, $data['items'])]);
             $audit->record(
                 $request,
                 'UPDATE',
@@ -193,16 +193,22 @@ class SaleController extends Controller
     }
 
     /** @param array<int, array{product_id: mixed, quantity: mixed, unit_price: mixed}> $items */
-    private function replaceItems(Sale $sale, array $items): void
+    private function replaceItems(Sale $sale, array $items): string
     {
         $sale->items()->delete();
+        $total = '0.00';
+
         foreach ($items as $item) {
+            $lineTotal = bcmul((string) $item['quantity'], (string) $item['unit_price'], 2);
             $sale->items()->create([
                 'product_id' => $item['product_id'],
                 'quantity' => $item['quantity'],
                 'unit_price' => $item['unit_price'],
-                'line_total' => bcmul((string) $item['quantity'], (string) $item['unit_price'], 2),
+                'line_total' => $lineTotal,
             ]);
+            $total = bcadd($total, $lineTotal, 2);
         }
+
+        return $total;
     }
 }

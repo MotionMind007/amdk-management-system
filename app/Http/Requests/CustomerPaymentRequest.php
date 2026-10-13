@@ -28,6 +28,13 @@ class CustomerPaymentRequest extends FormRequest
     {
         return [
             'submission_token' => ['sometimes', 'nullable', 'uuid'],
+            'payment_method' => ['required', Rule::in(['cash', 'transfer'])],
+            'sender_bank' => [
+                Rule::excludeIf(fn (): bool => $this->input('payment_method') !== 'transfer'),
+                'required',
+                'string',
+                'max:100',
+            ],
             'cash_account_id' => ['required', Rule::exists('cash_accounts', 'id')->where('is_active', true)],
             'payment_date' => ['required', 'date'],
             'amount' => ['required', 'numeric', 'gt:0'],
@@ -40,14 +47,34 @@ class CustomerPaymentRequest extends FormRequest
     public function after(): array
     {
         return [function (Validator $validator): void {
-            if ($validator->errors()->has('cash_account_id')) {
+            if ($validator->errors()->hasAny(['cash_account_id', 'payment_method'])) {
                 return;
             }
 
             $account = CashAccount::query()->find($this->integer('cash_account_id'));
-            if ($account?->type === 'bank' && ! $this->hasFile('proof')) {
-                $validator->errors()->add('proof', 'Bukti transfer wajib diunggah untuk pembayaran ke rekening bank.');
+            $isTransfer = $this->input('payment_method') === 'transfer';
+            $expectedAccountType = $isTransfer ? 'bank' : 'cash';
+
+            if ($account?->type !== $expectedAccountType) {
+                $validator->errors()->add(
+                    'cash_account_id',
+                    $isTransfer ? 'Pilih akun bank untuk pembayaran transfer.' : 'Pilih akun kas untuk pembayaran cash.',
+                );
+            }
+
+            if ($isTransfer && ! $this->hasFile('proof')) {
+                $validator->errors()->add('proof', 'Bukti transfer wajib diunggah untuk pembayaran transfer.');
             }
         }];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'payment_method.required' => 'Metode pembayaran wajib dipilih.',
+            'payment_method.in' => 'Metode pembayaran yang dipilih tidak tersedia.',
+            'sender_bank.required' => 'Nama bank pengirim wajib diisi untuk pembayaran transfer.',
+            'sender_bank.max' => 'Nama bank pengirim maksimal 100 karakter.',
+        ];
     }
 }

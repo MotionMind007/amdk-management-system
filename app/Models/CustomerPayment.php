@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['number', 'sale_id', 'cash_account_id', 'payment_date', 'amount', 'notes', 'proof_path', 'created_by'])]
+#[Fillable(['number', 'sale_id', 'cash_account_id', 'payment_date', 'amount', 'payment_method', 'sender_bank', 'notes', 'proof_path', 'created_by'])]
 class CustomerPayment extends Model
 {
     use HasFactory;

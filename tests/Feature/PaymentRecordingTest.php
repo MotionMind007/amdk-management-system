@@ -20,6 +20,26 @@ class PaymentRecordingTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
+    public function test_customer_payment_form_shows_methods_matching_accounts_and_balances(): void
+    {
+        $user = User::factory()->administrator()->create();
+        $sale = $this->makeReceivable($user);
+        CashAccount::create(['code' => 'KAS-FORM', 'name' => 'Kas Form', 'type' => 'cash', 'balance' => 125000, 'is_active' => true]);
+        CashAccount::create(['code' => 'BANK-FORM', 'name' => 'Bank Form', 'type' => 'bank', 'balance' => 250000, 'is_active' => true]);
+
+        $response = $this->actingAs($user)->get(route('finance.customer-payment.create', $sale));
+
+        $response->assertOk()->assertSee([
+            'Metode Pembayaran',
+            'Cash',
+            'Transfer',
+            'Nama Bank Pengirim',
+            'Akun Penerima',
+            'Kas Form · Rp 125.000',
+            'Bank Form · Rp 250.000',
+        ])->assertDontSee('Masuk ke');
+    }
+
     public function test_customer_bank_payment_requires_transfer_proof(): void
     {
         $user = User::factory()->administrator()->create();
@@ -29,13 +49,15 @@ class PaymentRecordingTest extends TestCase
         $response = $this->actingAs($user)
             ->from(route('finance.customer-payment.create', $sale))
             ->post(route('finance.customer-payment.store', $sale), [
+                'payment_method' => 'transfer',
+                'sender_bank' => 'Bank Papua',
                 'cash_account_id' => $bank->id,
                 'payment_date' => '2026-10-11',
                 'amount' => 20000,
             ]);
 
         $response->assertRedirect(route('finance.customer-payment.create', $sale));
-        $response->assertSessionHasErrors(['proof' => 'Bukti transfer wajib diunggah untuk pembayaran ke rekening bank.']);
+        $response->assertSessionHasErrors(['proof' => 'Bukti transfer wajib diunggah untuk pembayaran transfer.']);
         $this->assertDatabaseCount('customer_payments', 0);
     }
 
@@ -47,6 +69,8 @@ class PaymentRecordingTest extends TestCase
         $bank = CashAccount::create(['code' => 'BANK-P1', 'name' => 'Bank P1', 'type' => 'bank', 'balance' => 0, 'is_active' => true]);
 
         $response = $this->actingAs($user)->post(route('finance.customer-payment.store', $sale), [
+            'payment_method' => 'transfer',
+            'sender_bank' => 'Bank Papua',
             'cash_account_id' => $bank->id,
             'payment_date' => '2026-10-10',
             'amount' => 20000,
@@ -59,8 +83,52 @@ class PaymentRecordingTest extends TestCase
         $this->assertSame('30000.00', $sale->fresh()->outstanding_amount);
         $this->assertSame('partially_paid', $sale->fresh()->status);
         $this->assertSame('2026-10-10', $payment->payment_date->format('Y-m-d'));
+        $this->assertSame('transfer', $payment->payment_method);
+        $this->assertSame('Bank Papua', $payment->sender_bank);
         $this->assertSame('Transfer termin pertama', $payment->notes);
         Storage::disk('local')->assertExists($payment->proof_path);
+    }
+
+    public function test_customer_cash_payment_uses_cash_account_without_sender_bank_or_proof(): void
+    {
+        $user = User::factory()->administrator()->create();
+        $sale = $this->makeReceivable($user);
+        $cashAccount = CashAccount::create(['code' => 'KAS-PAY', 'name' => 'Kas Pembayaran', 'type' => 'cash', 'balance' => 0, 'is_active' => true]);
+
+        $response = $this->actingAs($user)->post(route('finance.customer-payment.store', $sale), [
+            'payment_method' => 'cash',
+            'cash_account_id' => $cashAccount->id,
+            'payment_date' => '2026-10-10',
+            'amount' => 10000,
+        ]);
+
+        $response->assertRedirect(route('sales.index'));
+        $this->assertDatabaseHas('customer_payments', [
+            'sale_id' => $sale->id,
+            'payment_method' => 'cash',
+            'sender_bank' => null,
+            'amount' => 10000,
+        ]);
+    }
+
+    public function test_customer_payment_rejects_an_account_that_does_not_match_the_method(): void
+    {
+        $user = User::factory()->administrator()->create();
+        $sale = $this->makeReceivable($user);
+        $bank = CashAccount::create(['code' => 'BANK-MISMATCH', 'name' => 'Bank Mismatch', 'type' => 'bank', 'balance' => 0, 'is_active' => true]);
+
+        $response = $this->actingAs($user)
+            ->from(route('finance.customer-payment.create', $sale))
+            ->post(route('finance.customer-payment.store', $sale), [
+                'payment_method' => 'cash',
+                'cash_account_id' => $bank->id,
+                'payment_date' => '2026-10-10',
+                'amount' => 10000,
+            ]);
+
+        $response->assertRedirect(route('finance.customer-payment.create', $sale));
+        $response->assertSessionHasErrors(['cash_account_id' => 'Pilih akun kas untuk pembayaran cash.']);
+        $this->assertDatabaseCount('customer_payments', 0);
     }
 
     public function test_supplier_partial_payment_updates_invoice_po_and_bank_balance(): void

@@ -26,14 +26,19 @@ class PaymentService
         ?string $notes = null,
         ?string $proofPath = null,
         ?string $submissionToken = null,
+        ?string $paymentMethod = null,
+        ?string $senderBank = null,
     ): CustomerPayment {
-        return DB::transaction(function () use ($sale, $account, $amount, $user, $paymentDate, $notes, $proofPath, $submissionToken): CustomerPayment {
+        return DB::transaction(function () use ($sale, $account, $amount, $user, $paymentDate, $notes, $proofPath, $submissionToken, $paymentMethod, $senderBank): CustomerPayment {
             $sale = Sale::query()->whereKey($sale->getKey())->lockForUpdate()->firstOrFail();
             $this->tokens->claim($submissionToken, $user, 'customer-payment.create', $sale);
             $this->periods->ensureOpen($paymentDate ?? today());
             $account = CashAccount::query()->whereKey($account->getKey())->lockForUpdate()->firstOrFail();
             $this->validateActiveAccount($account);
             $this->validatePaymentAmount($amount, $sale->outstanding_amount);
+            $paymentMethod ??= $sale->payment_method ?? ($account->type === 'bank' ? 'transfer' : 'cash');
+            $senderBank = $paymentMethod === 'transfer' ? ($senderBank ?? $sale->sender_bank) : null;
+            $this->validateCustomerPaymentMethod($account, $paymentMethod, $senderBank);
 
             $payment = CustomerPayment::create([
                 'number' => $this->numberService->next('PAY-IN'),
@@ -41,6 +46,8 @@ class PaymentService
                 'cash_account_id' => $account->id,
                 'payment_date' => $paymentDate ?? today(),
                 'amount' => $amount,
+                'payment_method' => $paymentMethod,
+                'sender_bank' => $senderBank,
                 'notes' => $notes,
                 'proof_path' => $proofPath,
                 'created_by' => $user->id,
@@ -125,6 +132,26 @@ class PaymentService
     {
         if (! $account->is_active) {
             throw ValidationException::withMessages(['cash_account_id' => 'Akun kas atau bank tidak aktif atau tidak tersedia.']);
+        }
+    }
+
+    private function validateCustomerPaymentMethod(CashAccount $account, string $paymentMethod, ?string $senderBank): void
+    {
+        if (! in_array($paymentMethod, ['cash', 'transfer'], true)) {
+            throw ValidationException::withMessages(['payment_method' => 'Metode pembayaran yang dipilih tidak tersedia.']);
+        }
+
+        $expectedAccountType = $paymentMethod === 'transfer' ? 'bank' : 'cash';
+        if ($account->type !== $expectedAccountType) {
+            throw ValidationException::withMessages([
+                'cash_account_id' => $paymentMethod === 'transfer'
+                    ? 'Pilih akun bank untuk pembayaran transfer.'
+                    : 'Pilih akun kas untuk pembayaran cash.',
+            ]);
+        }
+
+        if ($paymentMethod === 'transfer' && blank($senderBank)) {
+            throw ValidationException::withMessages(['sender_bank' => 'Nama bank pengirim wajib diisi untuk pembayaran transfer.']);
         }
     }
 }

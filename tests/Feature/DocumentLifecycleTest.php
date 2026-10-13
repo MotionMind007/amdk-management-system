@@ -138,6 +138,8 @@ class DocumentLifecycleTest extends TestCase
             ]],
         ])->assertRedirect(route('sales.index'));
 
+        $this->assertSame('33000.00', $sale->fresh()->total);
+
         $this->actingAs($salesUser)->post(route('sales.cancel', $sale), [
             'reason' => 'Pelanggan membatalkan pesanan.',
         ])->assertRedirect();
