@@ -22,7 +22,7 @@ class DatabaseBackupVerificationTest extends TestCase
             $this->markTestSkipped('Restore SQLite hanya diuji pada koneksi SQLite.');
         }
 
-        Storage::fake('local');
+        $this->fakeLocalStorage();
         User::factory()->count(2)->create();
         $usersBeforeVerification = User::count();
 
@@ -48,7 +48,7 @@ class DatabaseBackupVerificationTest extends TestCase
             $this->markTestSkipped('Restore SQLite hanya diuji pada koneksi SQLite.');
         }
 
-        Storage::fake('local');
+        $this->fakeLocalStorage();
         $filename = 'database-20261012-010000-corrupt.sql';
         Storage::disk('local')->put('backups/'.$filename, 'BUKAN SQL YANG VALID');
 
@@ -68,7 +68,7 @@ class DatabaseBackupVerificationTest extends TestCase
             $this->markTestSkipped('Restore SQLite hanya diuji pada koneksi SQLite.');
         }
 
-        Storage::fake('local');
+        $this->fakeLocalStorage();
         $backup = app(DatabaseBackupService::class)->create();
 
         $this->artisan('system:verify-backup')
@@ -83,7 +83,7 @@ class DatabaseBackupVerificationTest extends TestCase
             $this->markTestSkipped('Restore SQLite hanya diuji pada koneksi SQLite.');
         }
 
-        Storage::fake('local');
+        $this->fakeLocalStorage();
         $owner = User::factory()->create(['role' => UserRole::Owner]);
         $backup = app(DatabaseBackupService::class)->create();
         app(DatabaseBackupVerifier::class)->verify($backup['filename']);

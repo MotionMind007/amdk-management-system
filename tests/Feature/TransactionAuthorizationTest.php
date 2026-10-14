@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\UserRole;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class TransactionAuthorizationTest extends TestCase
@@ -47,14 +48,24 @@ class TransactionAuthorizationTest extends TestCase
         $this->actingAs($user)->get('/finance')->assertForbidden();
     }
 
-    public function test_owner_has_full_access(): void
+    #[DataProvider('fullAccessRoles')]
+    public function test_owner_and_super_administrator_have_full_access(UserRole $role): void
     {
-        $user = User::factory()->create(['role' => UserRole::Owner]);
+        $user = User::factory()->create(['role' => $role]);
 
         $this->actingAs($user)->get('/sales')->assertOk();
         $this->actingAs($user)->get('/sales/create')->assertOk();
         $this->actingAs($user)->get('/production/create')->assertOk();
         $this->actingAs($user)->get('/admin/users')->assertOk();
         $this->actingAs($user)->get('/reports')->assertOk();
+    }
+
+    /** @return array<string, array{UserRole}> */
+    public static function fullAccessRoles(): array
+    {
+        return [
+            'owner' => [UserRole::Owner],
+            'super administrator' => [UserRole::SuperAdministrator],
+        ];
     }
 }

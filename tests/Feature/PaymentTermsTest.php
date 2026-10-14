@@ -20,7 +20,7 @@ class PaymentTermsTest extends TestCase
     {
         $user = User::factory()->administrator()->create();
         CashAccount::create(['code' => 'KAS', 'name' => 'Kas Kantor', 'type' => 'cash', 'balance' => 3000000, 'is_active' => true]);
-        CashAccount::create(['code' => 'BANK-TEST', 'name' => 'Bank', 'type' => 'bank', 'balance' => 1250000, 'is_active' => true]);
+        CashAccount::create(['code' => 'BANK-TEST', 'name' => 'Bank Papua', 'type' => 'bank', 'balance' => 1250000, 'is_active' => true]);
 
         $response = $this->actingAs($user)->get(route('sales.create'));
 
@@ -32,8 +32,9 @@ class PaymentTermsTest extends TestCase
             'Rp 3.000.000',
             'Rp 1.250.000',
             'Saldo Kas Kantor',
-            'Saldo Bank',
-        ])->assertDontSee('Masuk ke Kas/Bank');
+            'Saldo Bank Papua',
+            'Harga/Karton',
+        ])->assertDontSee(['Masuk ke Kas/Bank', 'Harga/Satuan']);
     }
 
     public function test_credit_sale_requires_a_due_date(): void

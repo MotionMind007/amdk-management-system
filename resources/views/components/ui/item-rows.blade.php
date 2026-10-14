@@ -1,4 +1,4 @@
-@props(['products', 'mode' => 'transaction', 'items' => [], 'field' => 'items', 'idPrefix' => 'item'])
+@props(['products', 'mode' => 'transaction', 'items' => [], 'field' => 'items', 'idPrefix' => 'item', 'priceLabel' => 'Harga/Satuan'])
 
 @php
     $options = $products->map(fn ($product) => '<option value="'.$product->id.'">'.e($product->name).' ('.e($product->unit->code).')</option>')->implode('');
@@ -49,7 +49,7 @@
                     </div>
                 @elseif (! in_array($mode, ['opening', 'material'], true))
                     <div class="min-w-0 xl:col-span-3">
-                        <label for="{{ $idPrefix }}-price-{{ $index }}" class="text-xs font-medium text-slate-600">Harga/Satuan</label>
+                        <label for="{{ $idPrefix }}-price-{{ $index }}" class="text-xs font-medium text-slate-600">{{ $priceLabel }}</label>
                         <input id="{{ $idPrefix }}-price-{{ $index }}" name="{{ $field }}[{{ $index }}][unit_price]" value="{{ data_get($row, 'unit_price') }}" type="number" min="0" step="1" required class="mt-1 min-h-11 w-full min-w-0 rounded-lg border border-slate-300 px-3 text-sm">
                     </div>
                 @endif
@@ -80,7 +80,7 @@
                 </div>
             @elseif (! in_array($mode, ['opening', 'material'], true))
                 <div class="min-w-0 xl:col-span-3">
-                    <label for="{{ $idPrefix }}-price-__INDEX__" class="text-xs font-medium text-slate-600">Harga/Satuan</label>
+                    <label for="{{ $idPrefix }}-price-__INDEX__" class="text-xs font-medium text-slate-600">{{ $priceLabel }}</label>
                     <input id="{{ $idPrefix }}-price-__INDEX__" name="{{ $field }}[__INDEX__][unit_price]" type="number" min="0" step="1" required class="mt-1 min-h-11 w-full min-w-0 rounded-lg border border-slate-300 px-3 text-sm">
                 </div>
             @endif

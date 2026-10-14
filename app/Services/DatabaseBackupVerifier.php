@@ -77,6 +77,7 @@ class DatabaseBackupVerifier
 
         try {
             $pdo = new PDO('sqlite:'.$temporaryPath, options: [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+            $pdo->exec('PRAGMA journal_mode=MEMORY');
             $sql = file_get_contents($absolutePath);
             if ($sql === false || trim($sql) === '') {
                 throw new RuntimeException('File backup kosong atau tidak dapat dibaca.');
@@ -105,10 +106,12 @@ class DatabaseBackupVerifier
 
             return ['tables' => count($tables), 'rows' => $rows];
         } finally {
-            unset($pdo);
+            $pdo = null;
 
-            if (is_file($temporaryPath)) {
-                unlink($temporaryPath);
+            foreach ([$temporaryPath, $temporaryPath.'-journal', $temporaryPath.'-wal', $temporaryPath.'-shm'] as $temporaryFile) {
+                if (is_file($temporaryFile)) {
+                    @unlink($temporaryFile);
+                }
             }
         }
     }

@@ -63,7 +63,7 @@ class PaymentRecordingTest extends TestCase
 
     public function test_customer_partial_payment_stores_date_notes_and_proof(): void
     {
-        Storage::fake('local');
+        $this->fakeLocalStorage();
         $user = User::factory()->administrator()->create();
         $sale = $this->makeReceivable($user);
         $bank = CashAccount::create(['code' => 'BANK-P1', 'name' => 'Bank P1', 'type' => 'bank', 'balance' => 0, 'is_active' => true]);
@@ -133,7 +133,7 @@ class PaymentRecordingTest extends TestCase
 
     public function test_supplier_partial_payment_updates_invoice_po_and_bank_balance(): void
     {
-        Storage::fake('local');
+        $this->fakeLocalStorage();
         $user = User::factory()->administrator()->create();
         $invoice = $this->makeSupplierInvoice($user);
         $bank = CashAccount::create(['code' => 'BANK-P2', 'name' => 'Bank P2', 'type' => 'bank', 'balance' => 100000, 'is_active' => true]);

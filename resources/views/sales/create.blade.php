@@ -50,7 +50,7 @@
                     <div class="mt-2 grid gap-2 sm:grid-cols-2">
                         @foreach ($cashAccounts as $account)
                             <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                                <p class="text-xs font-medium text-slate-500">{{ $account->type === 'bank' ? 'Saldo Bank' : 'Saldo Kas Kantor' }}</p>
+                                <p class="text-xs font-medium text-slate-500">Saldo {{ $account->name }}</p>
                                 <p class="mt-1 text-sm font-semibold text-slate-900">Rp {{ number_format((float) $account->balance, 0, ',', '.') }}</p>
                             </div>
                         @endforeach
@@ -69,7 +69,7 @@
             <section class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                 <h2 class="font-semibold">Produk Dijual</h2>
                 <p class="mt-1 text-sm text-slate-500">Jumlah produk jadi menggunakan satuan karton.</p>
-                <div class="mt-5"><x-ui.item-rows :products="$products" :items="$sale->items ?? []" /></div>
+                <div class="mt-5"><x-ui.item-rows :products="$products" :items="$sale->items ?? []" price-label="Harga/Karton" /></div>
             </section>
 
             <div class="flex justify-end"><x-ui.button type="submit">{{ $isEdit ? 'Simpan Perubahan' : 'Simpan Draft' }}</x-ui.button></div>

@@ -19,7 +19,7 @@ class SupplierInvoiceFlowTest extends TestCase
 
     public function test_admin_records_supplier_invoice_from_posted_goods_receipt(): void
     {
-        Storage::fake('local');
+        $this->fakeLocalStorage();
         [$user, $purchaseOrder, $goodsReceipt] = $this->makeGoodsReceipt();
 
         $response = $this->actingAs($user)->post(route('purchasing.supplier-invoices.store', $goodsReceipt), [

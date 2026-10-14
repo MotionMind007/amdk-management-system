@@ -154,7 +154,7 @@ class PurchasingFlowTest extends TestCase
 
     public function test_warehouse_can_upload_proof_and_post_a_goods_receipt(): void
     {
-        Storage::fake('local');
+        $this->fakeLocalStorage();
         $warehouseUser = User::factory()->create(['role' => UserRole::Warehouse]);
         $warehouse = Warehouse::factory()->create();
         $product = Product::factory()->create();
@@ -198,7 +198,7 @@ class PurchasingFlowTest extends TestCase
 
     public function test_goods_receipt_requires_an_image_proof(): void
     {
-        Storage::fake('local');
+        $this->fakeLocalStorage();
         $warehouseUser = User::factory()->create(['role' => UserRole::Warehouse]);
         $purchaseOrder = PurchaseOrder::create([
             'number' => 'PO-RECEIPT-WITHOUT-PROOF',
@@ -224,7 +224,7 @@ class PurchasingFlowTest extends TestCase
 
     public function test_admin_cannot_post_goods_receipts(): void
     {
-        Storage::fake('local');
+        $this->fakeLocalStorage();
         $admin = User::factory()->create(['role' => UserRole::Admin]);
         $purchaseOrder = PurchaseOrder::create([
             'number' => 'PO-ADMIN-RECEIPT-FORBIDDEN',

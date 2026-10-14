@@ -17,7 +17,7 @@ class DatabaseBackupTest extends TestCase
 
     public function test_owner_can_create_and_download_private_database_backup(): void
     {
-        Storage::fake('local');
+        $this->fakeLocalStorage();
         $owner = User::factory()->create(['role' => UserRole::Owner]);
         $filename = 'database-20261012-010000-test.sql';
         $this->mock(DatabaseBackupService::class, function (MockInterface $mock) use ($filename): void {
@@ -41,7 +41,7 @@ class DatabaseBackupTest extends TestCase
             $this->markTestSkipped('Dump SQLite hanya diuji pada koneksi SQLite.');
         }
 
-        Storage::fake('local');
+        $this->fakeLocalStorage();
 
         $backup = app(DatabaseBackupService::class)->create();
         $contents = Storage::disk('local')->get('backups/'.$backup['filename']);

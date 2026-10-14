@@ -9,7 +9,6 @@ use App\Models\User;
 use App\UserRole;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -39,7 +38,7 @@ class MasterDataImportTest extends TestCase
 
     public function test_product_preview_does_not_persist_until_confirmed(): void
     {
-        Storage::fake('local');
+        $this->fakeLocalStorage();
         $owner = User::factory()->create(['role' => UserRole::Owner]);
         Unit::factory()->create(['code' => 'KRT', 'name' => 'Karton', 'allows_decimal' => false]);
         $file = UploadedFile::fake()->createWithContent(
@@ -71,7 +70,7 @@ class MasterDataImportTest extends TestCase
 
     public function test_invalid_and_duplicate_rows_cannot_be_imported(): void
     {
-        Storage::fake('local');
+        $this->fakeLocalStorage();
         $owner = User::factory()->create(['role' => UserRole::Owner]);
         Unit::factory()->create(['code' => 'KRT', 'name' => 'Karton', 'allows_decimal' => false]);
         Product::factory()->create(['sku' => 'EXISTING']);
@@ -101,7 +100,7 @@ class MasterDataImportTest extends TestCase
         string $table,
         array $expected,
     ): void {
-        Storage::fake('local');
+        $this->fakeLocalStorage();
         $owner = User::factory()->create(['role' => UserRole::Owner]);
         $file = UploadedFile::fake()->createWithContent($filename, $content);
 
@@ -146,7 +145,7 @@ class MasterDataImportTest extends TestCase
 
     public function test_another_user_cannot_confirm_an_owned_preview(): void
     {
-        Storage::fake('local');
+        $this->fakeLocalStorage();
         $firstOwner = User::factory()->create(['role' => UserRole::Owner]);
         $secondOwner = User::factory()->create(['role' => UserRole::Owner]);
         $file = UploadedFile::fake()->createWithContent(

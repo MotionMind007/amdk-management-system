@@ -14,7 +14,7 @@ class SystemHealthTest extends TestCase
 
     public function test_public_health_route_checks_database_and_storage(): void
     {
-        Storage::fake('local');
+        $this->fakeLocalStorage();
 
         $this->get('/up')->assertOk();
         Storage::disk('local')->assertDirectoryEmpty('/');
@@ -22,7 +22,7 @@ class SystemHealthTest extends TestCase
 
     public function test_owner_can_view_detailed_system_health(): void
     {
-        Storage::fake('local');
+        $this->fakeLocalStorage();
         $owner = User::factory()->create(['role' => UserRole::Owner]);
 
         $this->actingAs($owner)->get(route('admin.health'))->assertOk()->assertSee('Semua layanan normal')->assertSee('Koneksi database normal');

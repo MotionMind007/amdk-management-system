@@ -27,7 +27,7 @@ class OperationalWorkflowUatTest extends TestCase
 
     public function test_cross_role_operational_cycle_keeps_documents_stock_cash_and_audit_trail_consistent(): void
     {
-        Storage::fake('local');
+        $this->fakeLocalStorage();
         $this->travelTo('2026-10-12 09:00:00');
 
         $admin = User::factory()->create(['role' => UserRole::Admin]);
