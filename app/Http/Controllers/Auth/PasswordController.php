@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\UpdatePasswordRequest;
 use App\Services\AuditService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
 class PasswordController extends Controller
@@ -20,6 +21,7 @@ class PasswordController extends Controller
         $validated = $request->validated();
         $user = $request->user();
 
+        Auth::logoutOtherDevices($validated['current_password']);
         $user->update(['password' => $validated['password']]);
         $request->session()->regenerate();
 

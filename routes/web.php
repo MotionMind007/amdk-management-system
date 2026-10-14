@@ -58,7 +58,7 @@ Route::middleware('guest')->group(function (): void {
         ->name('login.store');
 });
 
-Route::middleware('auth')->group(function (): void {
+Route::middleware(['auth', 'active', 'auth.session'])->group(function (): void {
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
     Route::get('/profile', ProfileController::class)->name('profile.show');
     Route::get('/account/password', [PasswordController::class, 'edit'])->name('account.password.edit');

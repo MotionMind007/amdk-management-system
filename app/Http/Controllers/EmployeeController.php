@@ -6,6 +6,7 @@ use App\Http\Requests\EmployeeRequest;
 use App\Models\Employee;
 use App\Models\User;
 use App\Services\AuditService;
+use App\Services\PrivilegedAccountGuard;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -91,7 +92,7 @@ class EmployeeController extends Controller
         ]);
     }
 
-    public function update(EmployeeRequest $request, Employee $employee, AuditService $auditService): RedirectResponse
+    public function update(EmployeeRequest $request, Employee $employee, AuditService $auditService, PrivilegedAccountGuard $privilegedAccounts): RedirectResponse
     {
         $data = $request->validated();
         unset($data['photo']);
@@ -117,7 +118,7 @@ class EmployeeController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($request, $employee, $auditService, $data, $userData): void {
+            DB::transaction(function () use ($request, $employee, $auditService, $privilegedAccounts, $data, $userData): void {
                 $oldValues = $employee->toArray();
                 $user = $employee->user;
 
@@ -127,6 +128,7 @@ class EmployeeController extends Controller
                     $auditService->record($request, 'CREATE', 'User', $user, newValues: $user->toArray());
                 } else {
                     $oldUserValues = $user->toArray();
+                    $privilegedAccounts->ensureCanChange($user, $userData['role'], (bool) $userData['is_active'], 'status');
                     $user->update($userData);
                     $auditService->record($request, 'UPDATE', 'User', $user, $oldUserValues, $user->fresh()->toArray());
                 }

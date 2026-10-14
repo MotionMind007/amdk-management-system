@@ -6,6 +6,7 @@ use App\UserRole;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 
 class UserRequest extends FormRequest
 {
@@ -29,7 +30,7 @@ class UserRequest extends FormRequest
             'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($this->route('user'))],
             'role' => ['required', Rule::enum(UserRole::class)],
             'is_active' => ['required', 'boolean'],
-            'password' => [$this->isMethod('post') ? 'required' : 'nullable', 'string', 'min:8', 'confirmed'],
+            'password' => [$this->isMethod('post') ? 'required' : 'nullable', 'confirmed', Password::defaults()],
         ];
     }
 
@@ -40,7 +41,7 @@ class UserRequest extends FormRequest
             'email.required' => 'Email user wajib diisi.',
             'email.unique' => 'Email sudah digunakan.',
             'password.required' => 'Password awal wajib diisi.',
-            'password.min' => 'Password minimal 8 karakter.',
+            'password.min' => 'Password minimal 12 karakter.',
             'password.confirmed' => 'Konfirmasi password tidak sesuai.',
         ];
     }

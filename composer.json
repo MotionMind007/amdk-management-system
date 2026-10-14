@@ -51,7 +51,7 @@
             "@php artisan test"
         ],
         "test:uat": [
-            "@php artisan test --compact tests/Feature/UatSeederTest.php tests/Feature/OperationalWorkflowUatTest.php tests/Feature/TransactionAuthorizationTest.php tests/Feature/PurchasingFlowTest.php tests/Feature/NotificationSystemTest.php tests/Feature/InvoicePreviewTest.php tests/Feature/OperationalIntegrityTest.php"
+            "@php artisan test --compact tests/Feature/UatSeederTest.php tests/Feature/OperationalWorkflowUatTest.php tests/Feature/TransactionAuthorizationTest.php tests/Feature/PurchasingFlowTest.php tests/Feature/NotificationSystemTest.php tests/Feature/InvoicePreviewTest.php tests/Feature/OperationalIntegrityTest.php tests/Feature/SecurityHardeningTest.php"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",

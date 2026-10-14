@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UserRequest;
 use App\Models\User;
 use App\Services\AuditService;
+use App\Services\PrivilegedAccountGuard;
 use App\UserRole;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -49,11 +50,12 @@ class UserController extends Controller
         return view('admin.users.form', ['user' => $user, 'roles' => UserRole::cases()]);
     }
 
-    public function update(UserRequest $request, User $user, AuditService $auditService): RedirectResponse
+    public function update(UserRequest $request, User $user, AuditService $auditService, PrivilegedAccountGuard $privilegedAccounts): RedirectResponse
     {
-        DB::transaction(function () use ($request, $user, $auditService): void {
+        DB::transaction(function () use ($request, $user, $auditService, $privilegedAccounts): void {
             $oldValues = $user->toArray();
             $values = $request->validated();
+            $privilegedAccounts->ensureCanChange($user, $values['role'], (bool) $values['is_active']);
             if (($values['password'] ?? null) === null) {
                 unset($values['password']);
             }
@@ -64,12 +66,13 @@ class UserController extends Controller
         return redirect()->route('admin.users.index')->with('success', 'User berhasil diperbarui.');
     }
 
-    public function destroy(Request $request, User $user, AuditService $auditService): RedirectResponse
+    public function destroy(Request $request, User $user, AuditService $auditService, PrivilegedAccountGuard $privilegedAccounts): RedirectResponse
     {
         abort_if($request->user()->is($user), 422, 'Anda tidak dapat menonaktifkan akun sendiri.');
 
-        DB::transaction(function () use ($request, $user, $auditService): void {
+        DB::transaction(function () use ($request, $user, $auditService, $privilegedAccounts): void {
             $oldValues = $user->toArray();
+            $privilegedAccounts->ensureCanChange($user, $user->role, false);
             $user->update(['is_active' => false]);
             $auditService->record($request, 'DEACTIVATE', 'User', $user, $oldValues, $user->fresh()->toArray());
         });

@@ -73,7 +73,7 @@ class EmployeeRequest extends FormRequest
             'role.required' => 'Role login wajib dipilih.',
             'role.enum' => 'Role login tersebut tidak dapat dipilih.',
             'password.required' => 'Password awal wajib diisi.',
-            'password.min' => 'Password minimal 8 karakter.',
+            'password.min' => 'Password minimal 12 karakter.',
             'password.confirmed' => 'Konfirmasi password tidak sesuai.',
         ];
     }
