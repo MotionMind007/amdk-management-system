@@ -20,7 +20,7 @@ class StoreGoodsReceiptRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'submission_token' => ['sometimes', 'nullable', 'uuid'],
+            'submission_token' => ['required', 'uuid'],
             'quantities' => ['required', 'array'],
             'quantities.*' => ['nullable', 'numeric', 'min:0'],
             'proof' => ['required', File::image()->types(['jpg', 'jpeg', 'png', 'webp'])->max('5mb')],
@@ -31,6 +31,7 @@ class StoreGoodsReceiptRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'submission_token.required' => 'Token transaksi tidak tersedia. Muat ulang halaman lalu coba kembali.',
             'proof.required' => 'Bukti penerimaan barang wajib diunggah.',
             'proof.image' => 'Bukti penerimaan harus berupa gambar.',
             'proof.mimes' => 'Format bukti penerimaan harus JPG, JPEG, PNG, atau WEBP.',

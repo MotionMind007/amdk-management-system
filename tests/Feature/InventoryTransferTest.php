@@ -32,8 +32,16 @@ class InventoryTransferTest extends TestCase
         $this->assertSame('7.000', StockBalance::query()->whereBelongsTo($destination)->whereBelongsTo($product)->value('quantity'));
         $this->assertDatabaseCount('stock_movements', 2);
 
-        $this->expectException(ValidationException::class);
-        app(InventoryTransferService::class)->post($transfer, $user, '2a2fd9a6-d2f9-47e2-96f3-f4a2b17036b7');
+        try {
+            app(InventoryTransferService::class)->post($transfer, $user, '2a2fd9a6-d2f9-47e2-96f3-f4a2b17036b7');
+            $this->fail('Expected validation exception was not thrown.');
+        } catch (ValidationException $exception) {
+            $this->assertSame('Transaksi ini sudah diproses. Muat ulang halaman sebelum mencoba kembali.', $exception->errors()['submission_token'][0]);
+        }
+
+        $this->assertSame('13.000', StockBalance::query()->whereBelongsTo($source)->whereBelongsTo($product)->value('quantity'));
+        $this->assertSame('7.000', StockBalance::query()->whereBelongsTo($destination)->whereBelongsTo($product)->value('quantity'));
+        $this->assertDatabaseCount('stock_movements', 2);
     }
 
     public function test_sales_role_cannot_access_transfer(): void

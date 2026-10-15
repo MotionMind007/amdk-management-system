@@ -24,7 +24,7 @@ class PurchaseReturnRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'submission_token' => ['sometimes', 'nullable', 'uuid'],
+            'submission_token' => ['required', 'uuid'],
             'return_date' => ['required', 'date'],
             'reason' => ['required', 'string', 'max:2000'],
             'refund_account_id' => ['nullable', Rule::exists('cash_accounts', 'id')->where('is_active', true)],
@@ -37,6 +37,7 @@ class PurchaseReturnRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'submission_token.required' => 'Token transaksi tidak tersedia. Muat ulang halaman lalu coba kembali.',
             'reason.required' => 'Alasan retur wajib diisi.',
             'refund_account_id.exists' => 'Akun penerimaan refund tidak aktif atau tidak tersedia.',
         ];

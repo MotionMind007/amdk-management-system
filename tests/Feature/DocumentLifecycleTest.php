@@ -162,6 +162,7 @@ class DocumentLifecycleTest extends TestCase
         app(DeliveryService::class)->post($sale, [$saleItem->id => '4'], today()->format('Y-m-d'), null, $salesUser);
 
         $this->actingAs($salesUser)->post(route('sales.returns.store', $sale), [
+            'submission_token' => '00000000-0000-4000-8000-000000000021',
             'return_date' => today()->format('Y-m-d'),
             'reason' => 'Dua karton rusak saat diterima pelanggan.',
             'quantities' => [$saleItem->id => 2],
@@ -207,6 +208,7 @@ class DocumentLifecycleTest extends TestCase
         app(DeliveryService::class)->post($sale, [$saleItem->id => '4'], today()->format('Y-m-d'), null, $salesUser);
 
         $this->actingAs($salesUser)->post(route('sales.returns.store', $sale), [
+            'submission_token' => '00000000-0000-4000-8000-000000000022',
             'return_date' => today()->format('Y-m-d'),
             'reason' => 'Satu karton dikembalikan.',
             'refund_account_id' => $account->id,
@@ -235,6 +237,7 @@ class DocumentLifecycleTest extends TestCase
         ], $admin);
 
         $this->actingAs($admin)->post(route('purchasing.returns.store', $receipt), [
+            'submission_token' => '00000000-0000-4000-8000-000000000023',
             'return_date' => today()->format('Y-m-d'),
             'reason' => 'Dua unit tidak sesuai spesifikasi.',
             'quantities' => [$receiptItem->id => 2],
@@ -284,6 +287,7 @@ class DocumentLifecycleTest extends TestCase
         app(PaymentService::class)->paySupplier($invoice, $account, '50000', $admin);
 
         $this->actingAs($admin)->post(route('purchasing.returns.store', $receipt), [
+            'submission_token' => '00000000-0000-4000-8000-000000000024',
             'return_date' => today()->format('Y-m-d'),
             'reason' => 'Supplier menerima retur.',
             'refund_account_id' => $account->id,

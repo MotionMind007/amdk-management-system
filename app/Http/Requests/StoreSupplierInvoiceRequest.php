@@ -25,7 +25,7 @@ class StoreSupplierInvoiceRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'submission_token' => ['sometimes', 'nullable', 'uuid'],
+            'submission_token' => ['required', 'uuid'],
             'supplier_invoice_number' => [
                 'required',
                 'string',
@@ -43,6 +43,7 @@ class StoreSupplierInvoiceRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'submission_token.required' => 'Token transaksi tidak tersedia. Muat ulang halaman lalu coba kembali.',
             'supplier_invoice_number.required' => 'Nomor faktur supplier wajib diisi.',
             'supplier_invoice_number.unique' => 'Nomor faktur supplier sudah digunakan pada PO ini.',
             'invoice_date.required' => 'Tanggal faktur supplier wajib diisi.',

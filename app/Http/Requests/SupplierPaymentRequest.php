@@ -27,7 +27,7 @@ class SupplierPaymentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'submission_token' => ['sometimes', 'nullable', 'uuid'],
+            'submission_token' => ['required', 'uuid'],
             'cash_account_id' => ['required', Rule::exists('cash_accounts', 'id')->where('is_active', true)],
             'payment_date' => ['required', 'date'],
             'amount' => ['required', 'numeric', 'gt:0'],
@@ -49,5 +49,13 @@ class SupplierPaymentRequest extends FormRequest
                 $validator->errors()->add('proof', 'Bukti transfer wajib diunggah untuk pembayaran dari rekening bank.');
             }
         }];
+    }
+
+    /** @return array<string, string> */
+    public function messages(): array
+    {
+        return [
+            'submission_token.required' => 'Token transaksi tidak tersedia. Muat ulang halaman lalu coba kembali.',
+        ];
     }
 }

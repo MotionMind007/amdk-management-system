@@ -41,6 +41,7 @@ class StockOpnameService
             $balances = StockBalance::query()
                 ->where('warehouse_id', $stockOpname->warehouse_id)
                 ->whereIn('product_id', $productIds)
+                ->orderBy('product_id')
                 ->lockForUpdate()
                 ->get()
                 ->keyBy('product_id');
@@ -103,6 +104,6 @@ class StockOpnameService
             ]);
 
             return $stockOpname->fresh(['items.product.unit', 'warehouse', 'creator', 'poster']);
-        });
+        }, attempts: 3);
     }
 }

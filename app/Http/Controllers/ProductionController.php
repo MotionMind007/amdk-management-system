@@ -131,7 +131,7 @@ class ProductionController extends Controller
             $oldValues = $production->toArray();
             $posted = $productionService->post($production, $request->user());
             $auditService->record($request, 'POST', 'Production', $posted, $oldValues, $posted->toArray());
-        });
+        }, attempts: 3);
 
         return back()->with('success', 'Produksi berhasil diposting dan stok telah diperbarui.');
     }

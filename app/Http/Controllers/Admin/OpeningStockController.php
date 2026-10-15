@@ -118,7 +118,7 @@ class OpeningStockController extends Controller
             $oldValues = $openingStock->load('items')->toArray();
             $posted = $openingStockService->post($openingStock, $request->user());
             $auditService->record($request, 'POST', 'Opening Stock', $posted, $oldValues, $posted->toArray());
-        });
+        }, attempts: 3);
 
         return back()->with('success', 'Stok awal berhasil diposting dan saldo stok telah diperbarui.');
     }

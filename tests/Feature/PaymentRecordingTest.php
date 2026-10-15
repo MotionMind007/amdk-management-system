@@ -14,6 +14,7 @@ use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class PaymentRecordingTest extends TestCase
@@ -49,6 +50,7 @@ class PaymentRecordingTest extends TestCase
         $response = $this->actingAs($user)
             ->from(route('finance.customer-payment.create', $sale))
             ->post(route('finance.customer-payment.store', $sale), [
+                'submission_token' => '00000000-0000-4000-8000-000000000031',
                 'payment_method' => 'transfer',
                 'sender_bank' => 'Bank Papua',
                 'cash_account_id' => $bank->id,
@@ -69,6 +71,7 @@ class PaymentRecordingTest extends TestCase
         $bank = CashAccount::create(['code' => 'BANK-P1', 'name' => 'Bank P1', 'type' => 'bank', 'balance' => 0, 'is_active' => true]);
 
         $response = $this->actingAs($user)->post(route('finance.customer-payment.store', $sale), [
+            'submission_token' => '00000000-0000-4000-8000-000000000032',
             'payment_method' => 'transfer',
             'sender_bank' => 'Bank Papua',
             'cash_account_id' => $bank->id,
@@ -96,6 +99,7 @@ class PaymentRecordingTest extends TestCase
         $cashAccount = CashAccount::create(['code' => 'KAS-PAY', 'name' => 'Kas Pembayaran', 'type' => 'cash', 'balance' => 0, 'is_active' => true]);
 
         $response = $this->actingAs($user)->post(route('finance.customer-payment.store', $sale), [
+            'submission_token' => '00000000-0000-4000-8000-000000000033',
             'payment_method' => 'cash',
             'cash_account_id' => $cashAccount->id,
             'payment_date' => '2026-10-10',
@@ -111,6 +115,37 @@ class PaymentRecordingTest extends TestCase
         ]);
     }
 
+    public function test_repeated_customer_payment_submission_does_not_record_payment_twice(): void
+    {
+        $user = User::factory()->administrator()->create();
+        $sale = $this->makeReceivable($user);
+        $cashAccount = CashAccount::create(['code' => 'KAS-IDEMPOTENT', 'name' => 'Kas Idempotent', 'type' => 'cash', 'balance' => 0, 'is_active' => true]);
+        $submissionToken = (string) Str::uuid();
+        $payload = [
+            'submission_token' => $submissionToken,
+            'payment_method' => 'cash',
+            'cash_account_id' => $cashAccount->id,
+            'payment_date' => '2026-10-10',
+            'amount' => 10000,
+        ];
+
+        $this->actingAs($user)
+            ->post(route('finance.customer-payment.store', $sale), $payload)
+            ->assertRedirect(route('sales.index'));
+
+        $response = $this->actingAs($user)
+            ->from(route('finance.customer-payment.create', $sale))
+            ->post(route('finance.customer-payment.store', $sale), $payload);
+
+        $response->assertRedirect(route('finance.customer-payment.create', $sale));
+        $response->assertSessionHasErrors([
+            'submission_token' => 'Transaksi ini sudah diproses. Muat ulang halaman sebelum mencoba kembali.',
+        ]);
+        $this->assertSame('40000.00', $sale->fresh()->outstanding_amount);
+        $this->assertSame('10000.00', $cashAccount->fresh()->balance);
+        $this->assertDatabaseCount('customer_payments', 1);
+    }
+
     public function test_customer_payment_rejects_an_account_that_does_not_match_the_method(): void
     {
         $user = User::factory()->administrator()->create();
@@ -120,6 +155,7 @@ class PaymentRecordingTest extends TestCase
         $response = $this->actingAs($user)
             ->from(route('finance.customer-payment.create', $sale))
             ->post(route('finance.customer-payment.store', $sale), [
+                'submission_token' => '00000000-0000-4000-8000-000000000034',
                 'payment_method' => 'cash',
                 'cash_account_id' => $bank->id,
                 'payment_date' => '2026-10-10',
@@ -139,6 +175,7 @@ class PaymentRecordingTest extends TestCase
         $bank = CashAccount::create(['code' => 'BANK-P2', 'name' => 'Bank P2', 'type' => 'bank', 'balance' => 100000, 'is_active' => true]);
 
         $response = $this->actingAs($user)->post(route('finance.supplier-payment.store', $invoice), [
+            'submission_token' => '00000000-0000-4000-8000-000000000035',
             'cash_account_id' => $bank->id,
             'payment_date' => '2026-10-09',
             'amount' => 30000,

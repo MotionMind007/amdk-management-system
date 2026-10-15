@@ -105,6 +105,7 @@ class OperationalWorkflowUatTest extends TestCase
 
         $purchaseOrderItem = $purchaseOrder->items()->firstOrFail();
         $this->actingAs($warehouseUser)->post(route('purchasing.receive.store', $purchaseOrder), [
+            'submission_token' => '00000000-0000-4000-8000-000000000051',
             'receipt_date' => '2026-10-12',
             'quantities' => [$purchaseOrderItem->id => 100],
             'proof' => UploadedFile::fake()->image('bukti-penerimaan.jpg'),
@@ -116,6 +117,7 @@ class OperationalWorkflowUatTest extends TestCase
         $this->assertSame('100.000', $this->stockQuantity($preform, $warehouse));
 
         $this->actingAs($admin)->post(route('purchasing.supplier-invoices.store', $goodsReceipt), [
+            'submission_token' => '00000000-0000-4000-8000-000000000052',
             'supplier_invoice_number' => 'SUP-UAT-001',
             'invoice_date' => '2026-10-12',
             'due_date' => '2026-10-26',
@@ -125,6 +127,7 @@ class OperationalWorkflowUatTest extends TestCase
 
         $supplierInvoice = $goodsReceipt->supplierInvoice()->firstOrFail();
         $this->actingAs($admin)->post(route('finance.supplier-payment.store', $supplierInvoice), [
+            'submission_token' => '00000000-0000-4000-8000-000000000053',
             'cash_account_id' => $cashAccount->id,
             'payment_date' => '2026-10-12',
             'amount' => 10000,
@@ -202,6 +205,7 @@ class OperationalWorkflowUatTest extends TestCase
 
         $saleItem = $sale->items()->firstOrFail();
         $this->actingAs($warehouseUser)->post(route('sales.deliveries.store', $sale), [
+            'submission_token' => '00000000-0000-4000-8000-000000000054',
             'delivery_date' => '2026-10-12',
             'quantities' => [$saleItem->id => 20],
         ])->assertRedirect(route('sales.deliveries.index'));
@@ -210,6 +214,7 @@ class OperationalWorkflowUatTest extends TestCase
         $this->assertSame('30.000', $this->stockQuantity($finishedGood, $warehouse));
 
         $this->actingAs($salesUser)->post(route('finance.customer-payment.store', $sale), [
+            'submission_token' => '00000000-0000-4000-8000-000000000055',
             'payment_method' => 'cash',
             'cash_account_id' => $cashAccount->id,
             'payment_date' => '2026-10-12',

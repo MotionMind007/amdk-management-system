@@ -39,7 +39,7 @@ class GoodsReceiptController extends Controller
                 $receipt = $purchasing->receive($purchaseOrder, $data['quantities'], $request->user(), $data['submission_token'] ?? null);
                 $receipt->update(['proof_path' => $proofPath]);
                 $audit->record($request, 'RECEIVE', 'GoodsReceipt', $receipt, newValues: $receipt->fresh()->toArray());
-            });
+            }, attempts: 3);
 
             $receipt->load('purchaseOrder.supplier:id,name');
             $financeUsers = User::query()

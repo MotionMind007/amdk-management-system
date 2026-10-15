@@ -35,6 +35,16 @@ class DeliveryService
             }
 
             $sale->load('warehouse');
+            $productIds = SaleItem::query()
+                ->where('sale_id', $sale->id)
+                ->whereIn('id', array_keys($quantities))
+                ->pluck('product_id');
+            $this->inventoryService->lockBalances(
+                $productIds->map(fn (int $productId): array => [
+                    'product_id' => $productId,
+                    'warehouse_id' => $sale->warehouse_id,
+                ])->all(),
+            );
             $deliveryNote = DeliveryNote::create([
                 'number' => $this->numberService->next('SJ'),
                 'sale_id' => $sale->id,
@@ -92,6 +102,6 @@ class DeliveryService
             $sale->update(['delivery_status' => $allDelivered ? 'complete' : 'partial']);
 
             return $deliveryNote->fresh(['items.product.unit', 'sale.customer', 'warehouse']);
-        });
+        }, attempts: 3);
     }
 }

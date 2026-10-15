@@ -176,6 +176,7 @@ class PurchasingFlowTest extends TestCase
         ]);
 
         $response = $this->actingAs($warehouseUser)->post(route('purchasing.receive.store', $purchaseOrder), [
+            'submission_token' => '00000000-0000-4000-8000-000000000011',
             'quantities' => [$item->id => '80'],
             'proof' => UploadedFile::fake()->image('bukti-penerimaan.jpg'),
         ]);
@@ -212,7 +213,10 @@ class PurchasingFlowTest extends TestCase
 
         $response = $this->actingAs($warehouseUser)
             ->from(route('purchasing.receive.create', $purchaseOrder))
-            ->post(route('purchasing.receive.store', $purchaseOrder), ['quantities' => []]);
+            ->post(route('purchasing.receive.store', $purchaseOrder), [
+                'submission_token' => '00000000-0000-4000-8000-000000000012',
+                'quantities' => [],
+            ]);
 
         $response->assertRedirect(route('purchasing.receive.create', $purchaseOrder));
         $response->assertSessionHasErrors([

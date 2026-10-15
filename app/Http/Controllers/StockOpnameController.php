@@ -85,7 +85,7 @@ class StockOpnameController extends Controller
             );
 
             return $stockOpname;
-        });
+        }, attempts: 3);
 
         return redirect()
             ->route('inventory.opnames.show', $stockOpname)
@@ -203,7 +203,7 @@ class StockOpnameController extends Controller
                 $posted->toArray(),
                 $this->auditDescription($posted, 'diposting dan saldo stok disesuaikan'),
             );
-        });
+        }, attempts: 3);
 
         return redirect()
             ->route('inventory.opnames.show', $stockOpname)

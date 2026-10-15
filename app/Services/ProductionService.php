@@ -23,10 +23,32 @@ class ProductionService
                 throw ValidationException::withMessages(['status' => 'Hanya rekap draft yang dapat diposting.']);
             }
 
-            $production->load(['items.product', 'materials.product']);
+            $production->load(['items.product', 'materials.product', 'warehouse']);
             if ($production->items->isEmpty()) {
                 throw ValidationException::withMessages(['items' => 'Minimal satu hasil produksi harus diisi.']);
             }
+
+            $stockProductIds = $production->items->pluck('product_id')
+                ->merge($production->materials->pluck('product_id'));
+
+            if ($production->production_type === ProductionType::FinishedGood) {
+                $stockProductIds = $stockProductIds->merge(
+                    ProductComposition::query()
+                        ->whereIn('product_id', $production->items->pluck('product_id'))
+                        ->pluck('component_product_id'),
+                );
+            }
+
+            $this->inventoryService->lockBalances(
+                $stockProductIds
+                    ->unique()
+                    ->map(fn (int $productId): array => [
+                        'product_id' => $productId,
+                        'warehouse_id' => $production->warehouse_id,
+                    ])
+                    ->values()
+                    ->all(),
+            );
 
             if ($production->production_type === ProductionType::Packaging) {
                 $this->postPackagingProduction($production, $user);
@@ -37,7 +59,7 @@ class ProductionService
             $production->update(['status' => 'posted', 'posted_by' => $user->id, 'posted_at' => now()]);
 
             return $production->fresh(['items', 'materials']);
-        });
+        }, attempts: 3);
     }
 
     private function postFinishedGoodProduction(DailyProduction $production, User $user): void

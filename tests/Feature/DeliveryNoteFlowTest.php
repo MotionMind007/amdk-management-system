@@ -14,6 +14,7 @@ use App\Services\SalesService;
 use App\StockMovementType;
 use App\UserRole;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class DeliveryNoteFlowTest extends TestCase
@@ -29,6 +30,7 @@ class DeliveryNoteFlowTest extends TestCase
         $this->assertSame('pending', $sale->fresh()->delivery_status);
 
         $response = $this->actingAs($warehouseUser)->post(route('sales.deliveries.store', $sale), [
+            'submission_token' => '00000000-0000-4000-8000-000000000001',
             'delivery_date' => '2026-10-11',
             'notes' => 'Diterima bagian gudang pelanggan',
             'quantities' => [$sale->items()->firstOrFail()->id => 3],
@@ -49,6 +51,7 @@ class DeliveryNoteFlowTest extends TestCase
 
         $this->actingAs($salesUser)
             ->post(route('sales.deliveries.store', $sale), [
+                'submission_token' => '00000000-0000-4000-8000-000000000002',
                 'delivery_date' => today()->format('Y-m-d'),
                 'quantities' => [$sale->items()->firstOrFail()->id => 1],
             ])
@@ -65,12 +68,61 @@ class DeliveryNoteFlowTest extends TestCase
         $response = $this->actingAs($warehouseUser)
             ->from(route('sales.deliveries.create', $sale))
             ->post(route('sales.deliveries.store', $sale), [
+                'submission_token' => '00000000-0000-4000-8000-000000000003',
                 'delivery_date' => today()->format('Y-m-d'),
                 'quantities' => [$sale->items()->firstOrFail()->id => 6],
             ]);
 
         $response->assertRedirect(route('sales.deliveries.create', $sale));
         $response->assertSessionHasErrors(['quantities']);
+        $this->assertDatabaseCount('delivery_notes', 0);
+    }
+
+    public function test_repeated_delivery_submission_does_not_reduce_stock_twice(): void
+    {
+        [$sale, $product, $warehouse] = $this->makePostedSale();
+        $warehouseUser = User::factory()->create(['role' => UserRole::Warehouse]);
+        $submissionToken = (string) Str::uuid();
+        $payload = [
+            'submission_token' => $submissionToken,
+            'delivery_date' => today()->format('Y-m-d'),
+            'quantities' => [$sale->items()->firstOrFail()->id => 2],
+        ];
+
+        $this->actingAs($warehouseUser)
+            ->post(route('sales.deliveries.store', $sale), $payload)
+            ->assertRedirect(route('sales.deliveries.index'));
+
+        $response = $this->actingAs($warehouseUser)
+            ->from(route('sales.deliveries.create', $sale))
+            ->post(route('sales.deliveries.store', $sale), $payload);
+
+        $response->assertRedirect(route('sales.deliveries.create', $sale));
+        $response->assertSessionHasErrors([
+            'submission_token' => 'Transaksi ini sudah diproses. Muat ulang halaman sebelum mencoba kembali.',
+        ]);
+        $this->assertSame('18.000', StockBalance::query()->whereBelongsTo($product)->whereBelongsTo($warehouse)->value('quantity'));
+        $this->assertDatabaseCount('delivery_notes', 1);
+        $this->assertDatabaseCount('delivery_note_items', 1);
+    }
+
+    public function test_delivery_requires_a_submission_token_before_changing_stock(): void
+    {
+        [$sale, $product, $warehouse] = $this->makePostedSale();
+        $warehouseUser = User::factory()->create(['role' => UserRole::Warehouse]);
+
+        $response = $this->actingAs($warehouseUser)
+            ->from(route('sales.deliveries.create', $sale))
+            ->post(route('sales.deliveries.store', $sale), [
+                'delivery_date' => today()->format('Y-m-d'),
+                'quantities' => [$sale->items()->firstOrFail()->id => 2],
+            ]);
+
+        $response->assertRedirect(route('sales.deliveries.create', $sale));
+        $response->assertSessionHasErrors([
+            'submission_token' => 'Token transaksi tidak tersedia. Muat ulang halaman lalu coba kembali.',
+        ]);
+        $this->assertSame('20.000', StockBalance::query()->whereBelongsTo($product)->whereBelongsTo($warehouse)->value('quantity'));
         $this->assertDatabaseCount('delivery_notes', 0);
     }
 

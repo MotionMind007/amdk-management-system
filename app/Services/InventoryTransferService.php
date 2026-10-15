@@ -28,6 +28,17 @@ class InventoryTransferService
 
             $this->periods->ensureOpen($transfer->transfer_date);
             $transfer->load(['items.product', 'sourceWarehouse', 'destinationWarehouse']);
+            $stockKeys = $transfer->items->flatMap(fn ($item): array => [
+                [
+                    'product_id' => $item->product_id,
+                    'warehouse_id' => $transfer->source_warehouse_id,
+                ],
+                [
+                    'product_id' => $item->product_id,
+                    'warehouse_id' => $transfer->destination_warehouse_id,
+                ],
+            ])->all();
+            $this->inventory->lockBalances($stockKeys);
 
             foreach ($transfer->items as $item) {
                 $this->inventory->decrease($item->product, $transfer->sourceWarehouse, $item->quantity, StockMovementType::TransferOut, $user, $transfer, $transfer->number, "Transfer ke {$transfer->destinationWarehouse->name}", $transfer->transfer_date);
@@ -37,6 +48,6 @@ class InventoryTransferService
             $transfer->update(['status' => 'posted', 'posted_by' => $user->id, 'posted_at' => now()]);
 
             return $transfer->fresh();
-        });
+        }, attempts: 3);
     }
 }

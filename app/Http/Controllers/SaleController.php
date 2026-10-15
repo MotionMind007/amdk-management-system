@@ -101,7 +101,7 @@ class SaleController extends Controller
             $old = $sale->toArray();
             $posted = $salesService->post($sale, $request->user());
             $audit->record($request, 'POST', 'Sale', $posted, $old, $posted->toArray());
-        });
+        }, attempts: 3);
 
         $sale->load(['customer:id,name', 'warehouse:id,name']);
         $warehouseUsers = User::query()->where('role', UserRole::Warehouse)->where('is_active', true)->get();

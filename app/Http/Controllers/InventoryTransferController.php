@@ -44,8 +44,12 @@ class InventoryTransferController extends Controller
     public function post(Request $request, InventoryTransfer $inventoryTransfer, InventoryTransferService $service, AuditService $audit): RedirectResponse
     {
         $request->validate(['submission_token' => ['required', 'uuid']]);
-        $transfer = $service->post($inventoryTransfer, $request->user(), $request->string('submission_token')->toString());
-        $audit->record($request, 'POST', 'InventoryTransfer', $transfer, newValues: $transfer->toArray(), description: "Memposting transfer stok {$transfer->number}; stok gudang asal berkurang dan gudang tujuan bertambah.");
+        $transfer = DB::transaction(function () use ($request, $inventoryTransfer, $service, $audit): InventoryTransfer {
+            $transfer = $service->post($inventoryTransfer, $request->user(), $request->string('submission_token')->toString());
+            $audit->record($request, 'POST', 'InventoryTransfer', $transfer, newValues: $transfer->toArray(), description: "Memposting transfer stok {$transfer->number}; stok gudang asal berkurang dan gudang tujuan bertambah.");
+
+            return $transfer;
+        }, attempts: 3);
 
         return back()->with('success', "Transfer {$transfer->number} berhasil diposting.");
     }

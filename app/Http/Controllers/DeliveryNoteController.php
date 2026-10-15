@@ -8,6 +8,7 @@ use App\Models\Sale;
 use App\Services\AuditService;
 use App\Services\DeliveryService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class DeliveryNoteController extends Controller
@@ -50,15 +51,19 @@ class DeliveryNoteController extends Controller
         AuditService $audit,
     ): RedirectResponse {
         $data = $request->validated();
-        $deliveryNote = $deliveries->post($sale, $data['quantities'], $data['delivery_date'], $data['notes'] ?? null, $request->user(), $data['submission_token'] ?? null);
-        $audit->record(
-            $request,
-            'POST',
-            'DeliveryNote',
-            $deliveryNote,
-            newValues: $deliveryNote->toArray(),
-            description: "Memposting surat jalan {$deliveryNote->number} untuk penjualan {$sale->number}; stok gudang berkurang sesuai barang yang dikirim.",
-        );
+        $deliveryNote = DB::transaction(function () use ($request, $sale, $deliveries, $audit, $data): DeliveryNote {
+            $deliveryNote = $deliveries->post($sale, $data['quantities'], $data['delivery_date'], $data['notes'] ?? null, $request->user(), $data['submission_token'] ?? null);
+            $audit->record(
+                $request,
+                'POST',
+                'DeliveryNote',
+                $deliveryNote,
+                newValues: $deliveryNote->toArray(),
+                description: "Memposting surat jalan {$deliveryNote->number} untuk penjualan {$sale->number}; stok gudang berkurang sesuai barang yang dikirim.",
+            );
+
+            return $deliveryNote;
+        }, attempts: 3);
 
         return redirect()->route('sales.deliveries.index')->with('success', "Surat jalan {$deliveryNote->number} diposting dan stok telah diperbarui.");
     }

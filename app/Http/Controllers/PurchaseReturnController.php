@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Http\Requests\PurchaseReturnRequest;
 use App\Models\CashAccount;
 use App\Models\GoodsReceipt;
+use App\Models\PurchaseReturn;
 use App\Services\AuditService;
 use App\Services\PurchaseReturnService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class PurchaseReturnController extends Controller
@@ -35,23 +37,27 @@ class PurchaseReturnController extends Controller
         AuditService $audit,
     ): RedirectResponse {
         $data = $request->validated();
-        $purchaseReturn = $returns->post(
-            $goodsReceipt,
-            $data['quantities'],
-            $data['return_date'],
-            $data['reason'],
-            isset($data['refund_account_id']) ? (int) $data['refund_account_id'] : null,
-            $request->user(),
-            $data['submission_token'] ?? null,
-        );
-        $audit->record(
-            $request,
-            'RETURN',
-            'PurchaseReturn',
-            $purchaseReturn,
-            newValues: $purchaseReturn->toArray(),
-            description: "Memposting retur pembelian {$purchaseReturn->number} untuk {$goodsReceipt->number} senilai Rp ".number_format((float) $purchaseReturn->total, 0, ',', '.').". Alasan: {$purchaseReturn->reason}.",
-        );
+        $purchaseReturn = DB::transaction(function () use ($request, $goodsReceipt, $returns, $audit, $data): PurchaseReturn {
+            $purchaseReturn = $returns->post(
+                $goodsReceipt,
+                $data['quantities'],
+                $data['return_date'],
+                $data['reason'],
+                isset($data['refund_account_id']) ? (int) $data['refund_account_id'] : null,
+                $request->user(),
+                $data['submission_token'] ?? null,
+            );
+            $audit->record(
+                $request,
+                'RETURN',
+                'PurchaseReturn',
+                $purchaseReturn,
+                newValues: $purchaseReturn->toArray(),
+                description: "Memposting retur pembelian {$purchaseReturn->number} untuk {$goodsReceipt->number} senilai Rp ".number_format((float) $purchaseReturn->total, 0, ',', '.').". Alasan: {$purchaseReturn->reason}.",
+            );
+
+            return $purchaseReturn;
+        }, attempts: 3);
 
         return redirect()->route('purchasing.index')->with('success', "Retur {$purchaseReturn->number} diposting; stok dan saldo transaksi telah diperbarui.");
     }

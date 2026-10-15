@@ -47,6 +47,16 @@ class PurchaseReturnService
             }
 
             $purchaseOrder->load('warehouse');
+            $productIds = GoodsReceiptItem::query()
+                ->where('goods_receipt_id', $goodsReceipt->id)
+                ->whereIn('id', array_keys($quantities))
+                ->pluck('product_id');
+            $this->inventoryService->lockBalances(
+                $productIds->map(fn (int $productId): array => [
+                    'product_id' => $productId,
+                    'warehouse_id' => $purchaseOrder->warehouse_id,
+                ])->all(),
+            );
             $purchaseReturn = PurchaseReturn::create([
                 'number' => $this->numberService->next('PR'),
                 'purchase_order_id' => $purchaseOrder->id,
@@ -147,7 +157,7 @@ class PurchaseReturnService
             ]);
 
             return $purchaseReturn->fresh(['items.product', 'purchaseOrder']);
-        });
+        }, attempts: 3);
     }
 
     private function recordSupplierRefund(PurchaseReturn $purchaseReturn, ?int $refundAccountId, string $amount, User $user): void

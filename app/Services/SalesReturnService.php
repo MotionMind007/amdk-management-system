@@ -40,6 +40,16 @@ class SalesReturnService
             }
 
             $sale->load('warehouse');
+            $productIds = SaleItem::query()
+                ->where('sale_id', $sale->id)
+                ->whereIn('id', array_keys($quantities))
+                ->pluck('product_id');
+            $this->inventoryService->lockBalances(
+                $productIds->map(fn (int $productId): array => [
+                    'product_id' => $productId,
+                    'warehouse_id' => $sale->warehouse_id,
+                ])->all(),
+            );
             $salesReturn = SalesReturn::create([
                 'number' => $this->numberService->next('SR'),
                 'sale_id' => $sale->id,
@@ -133,7 +143,7 @@ class SalesReturnService
             ]);
 
             return $salesReturn->fresh(['items.product', 'sale']);
-        });
+        }, attempts: 3);
     }
 
     private function recordCustomerRefund(SalesReturn $salesReturn, ?int $refundAccountId, string $amount, User $user): void

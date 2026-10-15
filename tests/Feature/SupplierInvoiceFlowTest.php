@@ -23,6 +23,7 @@ class SupplierInvoiceFlowTest extends TestCase
         [$user, $purchaseOrder, $goodsReceipt] = $this->makeGoodsReceipt();
 
         $response = $this->actingAs($user)->post(route('purchasing.supplier-invoices.store', $goodsReceipt), [
+            'submission_token' => '00000000-0000-4000-8000-000000000041',
             'supplier_invoice_number' => 'SUP-INV-001',
             'invoice_date' => '2026-10-11',
             'due_date' => '2026-10-25',

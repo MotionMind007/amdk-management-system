@@ -27,7 +27,7 @@ class CustomerPaymentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'submission_token' => ['sometimes', 'nullable', 'uuid'],
+            'submission_token' => ['required', 'uuid'],
             'payment_method' => ['required', Rule::in(['cash', 'transfer'])],
             'sender_bank' => [
                 Rule::excludeIf(fn (): bool => $this->input('payment_method') !== 'transfer'),
@@ -71,6 +71,7 @@ class CustomerPaymentRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'submission_token.required' => 'Token transaksi tidak tersedia. Muat ulang halaman lalu coba kembali.',
             'payment_method.required' => 'Metode pembayaran wajib dipilih.',
             'payment_method.in' => 'Metode pembayaran yang dipilih tidak tersedia.',
             'sender_bank.required' => 'Nama bank pengirim wajib diisi untuk pembayaran transfer.',

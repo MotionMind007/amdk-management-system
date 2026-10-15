@@ -27,6 +27,14 @@ class OpeningStockService
             }
 
             $openingStock->load(['items.product', 'warehouse']);
+            $this->inventoryService->lockBalances(
+                $openingStock->items
+                    ->map(fn ($item): array => [
+                        'product_id' => $item->product_id,
+                        'warehouse_id' => $openingStock->warehouse_id,
+                    ])
+                    ->all(),
+            );
 
             foreach ($openingStock->items as $item) {
                 $hasPreviousMovement = StockMovement::query()
@@ -60,6 +68,6 @@ class OpeningStockService
             ]);
 
             return $openingStock->fresh(['items.product', 'warehouse']);
-        });
+        }, attempts: 3);
     }
 }

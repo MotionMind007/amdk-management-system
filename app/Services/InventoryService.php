@@ -15,6 +15,36 @@ use Illuminate\Validation\ValidationException;
 
 class InventoryService
 {
+    /**
+     * Lock stock balances in a deterministic order for a multi-item transaction.
+     *
+     * @param  array<int, array{product_id: int, warehouse_id: int}>  $stockKeys
+     */
+    public function lockBalances(array $stockKeys): void
+    {
+        $orderedKeys = collect($stockKeys)
+            ->map(fn (array $stockKey): array => [
+                'product_id' => (int) $stockKey['product_id'],
+                'warehouse_id' => (int) $stockKey['warehouse_id'],
+            ])
+            ->unique(fn (array $stockKey): string => $stockKey['warehouse_id'].'-'.$stockKey['product_id'])
+            ->sortBy([
+                ['warehouse_id', 'asc'],
+                ['product_id', 'asc'],
+            ])
+            ->values();
+
+        foreach ($orderedKeys as $stockKey) {
+            StockBalance::query()->firstOrCreate($stockKey, ['quantity' => 0]);
+
+            StockBalance::query()
+                ->where('product_id', $stockKey['product_id'])
+                ->where('warehouse_id', $stockKey['warehouse_id'])
+                ->lockForUpdate()
+                ->firstOrFail();
+        }
+    }
+
     public function increase(
         Product $product,
         Warehouse $warehouse,
@@ -120,6 +150,6 @@ class InventoryService
                 'notes' => $notes,
                 'occurred_at' => $occurredAt ?? now(),
             ]);
-        });
+        }, attempts: 3);
     }
 }
