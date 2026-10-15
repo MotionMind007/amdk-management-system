@@ -56,4 +56,46 @@ class DatabaseBackupTest extends TestCase
 
         $this->actingAs($admin)->get(route('admin.backups.index'))->assertForbidden();
     }
+
+    public function test_backup_is_replicated_to_configured_offsite_disk(): void
+    {
+        if (DB::connection()->getDriverName() !== 'sqlite') {
+            $this->markTestSkipped('Dump SQLite hanya diuji pada koneksi SQLite.');
+        }
+
+        $this->fakeLocalStorage();
+        Storage::fake('offsite-test');
+        config(['operations.database_backup.offsite_disk' => 'offsite-test']);
+
+        $backup = app(DatabaseBackupService::class)->create();
+
+        Storage::disk('local')->assertExists('backups/'.$backup['filename']);
+        Storage::disk('offsite-test')->assertExists('backups/'.$backup['filename']);
+        $this->assertSame('offsite-test', $backup['offsite_disk']);
+
+        $owner = User::factory()->create(['role' => UserRole::Owner]);
+        $this->actingAs($owner)
+            ->get(route('admin.backups.index'))
+            ->assertOk()
+            ->assertSeeText('Tersalin ke offsite-test');
+    }
+
+    public function test_scheduled_backup_command_creates_local_and_offsite_copies(): void
+    {
+        if (DB::connection()->getDriverName() !== 'sqlite') {
+            $this->markTestSkipped('Dump SQLite hanya diuji pada koneksi SQLite.');
+        }
+
+        $this->fakeLocalStorage();
+        Storage::fake('offsite-test');
+        config(['operations.database_backup.offsite_disk' => 'offsite-test']);
+
+        $this->artisan('system:backup-database')
+            ->expectsOutputToContain('berhasil dibuat')
+            ->expectsOutputToContain('berhasil disalin ke disk offsite offsite-test')
+            ->assertSuccessful();
+
+        $this->assertCount(1, Storage::disk('local')->files('backups'));
+        $this->assertCount(1, Storage::disk('offsite-test')->files('backups'));
+    }
 }

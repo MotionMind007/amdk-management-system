@@ -47,6 +47,13 @@ return [
             'report' => false,
         ],
 
+        'backup_offsite' => [
+            'driver' => 'local',
+            'root' => env('DB_BACKUP_OFFSITE_PATH'),
+            'throw' => true,
+            'report' => true,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

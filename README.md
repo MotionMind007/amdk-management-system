@@ -21,7 +21,7 @@ npm run build
 php artisan serve
 ```
 
-Atur `ADMIN_PASSWORD` minimal delapan karakter sebelum menjalankan seeder awal:
+Atur `ADMIN_PASSWORD` minimal 12 karakter sebelum menjalankan seeder awal:
 
 ```bash
 php artisan db:seed

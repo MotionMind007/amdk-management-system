@@ -5,7 +5,7 @@ Dokumen ini menjadi baseline UAT sebelum aplikasi dipakai oleh operator pabrik. 
 ## Persiapan
 
 1. Pastikan migrasi terbaru sudah dijalankan.
-2. Atur `UAT_PASSWORD` minimal delapan karakter pada environment non-production.
+2. Atur `UAT_PASSWORD` minimal 12 karakter pada environment non-production.
 3. Jalankan `php artisan db:seed --class=UatSeeder`.
 4. Jalankan `composer test:uat` sebagai baseline otomatis.
 5. Catat versi commit, tanggal, penguji, browser, dan hasil pada lembar persetujuan di bagian akhir.

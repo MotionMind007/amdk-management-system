@@ -58,7 +58,7 @@ class UatSeederTest extends TestCase
         config()->set('operations.uat.password');
 
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Atur UAT_PASSWORD minimal 8 karakter');
+        $this->expectExceptionMessage('Atur UAT_PASSWORD minimal 12 karakter');
 
         $this->seed(UatSeeder::class);
     }

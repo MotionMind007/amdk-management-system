@@ -6,6 +6,8 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Database\Migrations\Migrator;
 use Illuminate\Encryption\Encrypter;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Symfony\Component\Process\ExecutableFinder;
 use Throwable;
 
@@ -36,7 +38,7 @@ class DeploymentReadinessService
             $this->result('Scheduler', $this->schedule->events() !== [], count($this->schedule->events()).' tugas terdaftar.', 'Tidak ada tugas scheduler terdaftar.'),
             $this->binaryCheck('pg_dump', (string) config('operations.database_backup.pg_dump_binary')),
             $this->binaryCheck('psql', (string) config('operations.database_backup.psql_binary')),
-            $this->warning('Penyimpanan backup', 'Backup masih disimpan di storage privat lokal; salin otomatis ke penyimpanan eksternal sebelum go-live.'),
+            $this->offsiteBackupCheck(),
             $this->warning('Optimasi Laravel', app()->configurationIsCached() ? 'Konfigurasi sudah di-cache.' : 'Jalankan php artisan optimize pada proses deployment.'),
         ];
 
@@ -144,6 +146,31 @@ class DeploymentReadinessService
         $path = $this->executableFinder->find($binary);
 
         return $this->result("Binary {$name}", $path !== null, $path ?? $binary, "{$binary} tidak ditemukan di server.");
+    }
+
+    /** @return array{name: string, status: string, message: string} */
+    private function offsiteBackupCheck(): array
+    {
+        $disk = config('operations.database_backup.offsite_disk');
+
+        if (! is_string($disk) || $disk === '' || $disk === 'local') {
+            return $this->failure('Penyimpanan backup offsite', 'DB_BACKUP_OFFSITE_DISK harus menunjuk ke disk eksternal yang terpisah dari storage lokal.');
+        }
+
+        $path = '.readiness-'.Str::uuid();
+
+        try {
+            $storage = Storage::disk($disk);
+            $written = $storage->put($path, 'ok');
+            $readable = $written && $storage->get($path) === 'ok';
+            $storage->delete($path);
+
+            return $this->result('Penyimpanan backup offsite', $readable, "Disk {$disk} dapat dibaca dan ditulis.", "Disk {$disk} tidak dapat dibaca atau ditulis.");
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return $this->failure('Penyimpanan backup offsite', "Disk {$disk} tidak dapat diakses.");
+        }
     }
 
     /** @return array{name: string, status: string, message: string} */

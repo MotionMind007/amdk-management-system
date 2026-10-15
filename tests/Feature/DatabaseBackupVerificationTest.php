@@ -97,4 +97,21 @@ class DatabaseBackupVerificationTest extends TestCase
             ->get(route('admin.backups.download', $backup['filename'].'.verified.json'))
             ->assertNotFound();
     }
+
+    public function test_verified_backup_and_metadata_are_replicated_offsite(): void
+    {
+        if (DB::connection()->getDriverName() !== 'sqlite') {
+            $this->markTestSkipped('Restore SQLite hanya diuji pada koneksi SQLite.');
+        }
+
+        $this->fakeLocalStorage();
+        Storage::fake('offsite-test');
+        config(['operations.database_backup.offsite_disk' => 'offsite-test']);
+        $backup = app(DatabaseBackupService::class)->create();
+
+        app(DatabaseBackupVerifier::class)->verify($backup['filename']);
+
+        Storage::disk('offsite-test')->assertExists('backups/'.$backup['filename']);
+        Storage::disk('offsite-test')->assertExists('backups/'.$backup['filename'].'.verified.json');
+    }
 }

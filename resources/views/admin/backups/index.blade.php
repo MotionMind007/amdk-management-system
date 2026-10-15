@@ -12,7 +12,7 @@
     </div>
 
     <div class="mt-5 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
-        <p>File backup disimpan di storage privat dan hanya dapat diunduh oleh pengguna Sistem Admin. Salin file ke lokasi eksternal secara berkala.</p>
+        <p>File backup disimpan di storage privat dan hanya dapat diunduh oleh pengguna Sistem Admin. Jika disk offsite dikonfigurasi, sistem menyalin backup secara otomatis ke lokasi eksternal.</p>
         <p class="mt-2">Sesudah backup, jalankan <code class="rounded bg-blue-100 px-1.5 py-0.5 font-mono text-xs">php artisan system:verify-backup</code> di server untuk menguji restore tanpa mengubah database aktif.</p>
     </div>
 
@@ -26,6 +26,13 @@
                         <span class="w-fit rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">Restore terverifikasi {{ date('d/m/Y H:i', $backup['verified_at']) }}</span>
                     @else
                         <span class="w-fit rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">Belum diuji restore</span>
+                    @endif
+                    @if ($backup['offsite_exists'])
+                        <span class="w-fit rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">Tersalin ke {{ $backup['offsite_disk'] }}</span>
+                    @elseif ($backup['offsite_disk'])
+                        <span class="w-fit rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">Belum tersedia di offsite</span>
+                    @else
+                        <span class="w-fit rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">Offsite belum dikonfigurasi</span>
                     @endif
                 </div>
                 <a href="{{ route('admin.backups.download', $backup['filename']) }}" class="text-sm font-semibold text-brand-700">Unduh</a>

@@ -33,6 +33,9 @@ DB_DATABASE=amdk
 DB_USERNAME=amdk_app
 DB_PASSWORD=gunakan-secret-manager
 
+DB_BACKUP_OFFSITE_DISK=backup_offsite
+DB_BACKUP_OFFSITE_PATH=/mnt/backup-amdk
+
 SESSION_DRIVER=database
 SESSION_SECURE_COOKIE=true
 SESSION_HTTP_ONLY=true
@@ -58,7 +61,7 @@ php artisan system:check-deployment
 php artisan system:check-integrity
 ```
 
-Sebelum `db:seed`, isi `ADMIN_NAME`, `ADMIN_EMAIL`, dan `ADMIN_PASSWORD`. Setelah akun Super Admin berhasil dibuat, hapus `ADMIN_PASSWORD` dari environment agar deployment berikutnya tidak mengubah password akun tersebut.
+Sebelum `db:seed`, isi `ADMIN_NAME`, `ADMIN_EMAIL`, dan `ADMIN_PASSWORD` minimal 12 karakter. Setelah akun Super Admin berhasil dibuat, hapus `ADMIN_PASSWORD` dari environment agar deployment berikutnya tidak mengubah password akun tersebut.
 
 Jangan menjalankan `UatSeeder` di production. Seeder tersebut memiliki pengaman environment, tetapi tetap tidak boleh dimasukkan ke prosedur deployment.
 
@@ -110,7 +113,13 @@ Scheduler menjalankan pengingat jatuh tempo setiap hari. Pantau `failed_jobs` da
 
 ## Backup dan Restore
 
-Backup dari halaman Sistem Admin disimpan pada private storage. Salin backup secara otomatis ke object storage atau server kedua dengan retensi yang disetujui perusahaan.
+Backup dari halaman Sistem Admin disimpan pada private storage dan otomatis disalin ke disk `DB_BACKUP_OFFSITE_DISK`. Path contoh harus berupa disk eksternal, NAS, atau mount server lain—bukan folder pada disk VPS yang sama.
+
+Scheduler menjalankan `php artisan system:backup-database` setiap hari pukul 01:00. Untuk membuat backup manual sekaligus menguji restore gunakan:
+
+```bash
+php artisan system:backup-database --verify
+```
 
 Baseline retensi yang disarankan:
 

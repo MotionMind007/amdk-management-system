@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Mockery\MockInterface;
 use Symfony\Component\Process\ExecutableFinder;
 use Tests\TestCase;
@@ -26,6 +27,7 @@ class DeploymentReadinessTest extends TestCase
         }
 
         $this->app->detectEnvironment(fn (): string => 'production');
+        Storage::fake('offsite-test');
         config([
             'app.debug' => false,
             'app.url' => 'https://staging.example.com',
@@ -38,6 +40,7 @@ class DeploymentReadinessTest extends TestCase
             'session.secure' => true,
             'session.http_only' => true,
             'session.same_site' => 'lax',
+            'operations.database_backup.offsite_disk' => 'offsite-test',
         ]);
         $this->mock(ExecutableFinder::class, function (MockInterface $mock): void {
             $mock->shouldReceive('find')->twice()->andReturn('/usr/bin/postgresql-client');
@@ -46,5 +49,14 @@ class DeploymentReadinessTest extends TestCase
         $this->artisan('system:check-deployment')
             ->expectsOutputToContain('Pemeriksaan deployment lulus')
             ->assertSuccessful();
+    }
+
+    public function test_production_readiness_rejects_missing_offsite_backup_storage(): void
+    {
+        config(['operations.database_backup.offsite_disk' => null]);
+
+        $this->artisan('system:check-deployment')
+            ->expectsOutputToContain('DB_BACKUP_OFFSITE_DISK harus menunjuk ke disk eksternal')
+            ->assertFailed();
     }
 }

@@ -9,6 +9,7 @@ use App\Models\Warehouse;
 use App\UserRole;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use RuntimeException;
 
 class DatabaseSeeder extends Seeder
 {
@@ -19,15 +20,19 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $adminPassword = env('ADMIN_PASSWORD');
+        $adminPassword = config('operations.initial_admin.password');
 
         if (! is_string($adminPassword) || $adminPassword === '') {
             $this->command?->warn('ADMIN_PASSWORD belum diatur; user administrator tidak dibuat.');
         } else {
+            if (mb_strlen($adminPassword) < 12) {
+                throw new RuntimeException('Atur ADMIN_PASSWORD minimal 12 karakter sebelum menjalankan seeder awal.');
+            }
+
             User::query()->updateOrCreate(
-                ['email' => env('ADMIN_EMAIL', 'admin@amdk.local')],
+                ['email' => config('operations.initial_admin.email')],
                 [
-                    'name' => env('ADMIN_NAME', 'Administrator'),
+                    'name' => config('operations.initial_admin.name'),
                     'password' => $adminPassword,
                     'role' => UserRole::SuperAdministrator,
                     'is_active' => true,

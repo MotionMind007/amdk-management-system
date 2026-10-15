@@ -7,10 +7,11 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Symfony\Component\Process\Process;
+use Throwable;
 
 class DatabaseBackupService
 {
-    /** @return array{filename: string, size: int, created_at: int} */
+    /** @return array{filename: string, size: int, created_at: int, offsite_disk: string|null} */
     public function create(): array
     {
         $driver = DB::connection()->getDriverName();
@@ -26,11 +27,17 @@ class DatabaseBackupService
         };
 
         clearstatcache(true, $absolutePath);
+        $offsiteDisk = $this->replicate($filename);
 
-        return ['filename' => $filename, 'size' => Storage::disk('local')->size($relativePath), 'created_at' => Storage::disk('local')->lastModified($relativePath)];
+        return [
+            'filename' => $filename,
+            'size' => Storage::disk('local')->size($relativePath),
+            'created_at' => Storage::disk('local')->lastModified($relativePath),
+            'offsite_disk' => $offsiteDisk,
+        ];
     }
 
-    /** @return list<array{filename: string, size: int, created_at: int, verified_at: int|null}> */
+    /** @return list<array{filename: string, size: int, created_at: int, verified_at: int|null, offsite_disk: string|null, offsite_exists: bool}> */
     public function all(): array
     {
         return collect(Storage::disk('local')->files('backups'))
@@ -47,17 +54,78 @@ class DatabaseBackupService
                     && hash_equals($checksum, $verification['checksum'])
                         ? (int) ($verification['verified_at'] ?? 0)
                         : null;
+                $offsiteDisk = $this->offsiteDisk();
+                $offsiteExists = false;
+
+                if ($offsiteDisk !== null) {
+                    try {
+                        $offsiteExists = Storage::disk($offsiteDisk)->exists($path);
+                    } catch (Throwable $exception) {
+                        report($exception);
+                    }
+                }
 
                 return [
                     'filename' => basename($path),
                     'size' => Storage::disk('local')->size($path),
                     'created_at' => Storage::disk('local')->lastModified($path),
                     'verified_at' => $verifiedAt ?: null,
+                    'offsite_disk' => $offsiteDisk,
+                    'offsite_exists' => $offsiteExists,
                 ];
             })
             ->sortByDesc('created_at')
             ->values()
             ->all();
+    }
+
+    public function replicateVerified(string $filename): ?string
+    {
+        $disk = $this->replicate($filename);
+
+        if ($disk !== null) {
+            $this->replicate($filename.'.verified.json');
+        }
+
+        return $disk;
+    }
+
+    public function offsiteDisk(): ?string
+    {
+        $disk = config('operations.database_backup.offsite_disk');
+
+        return is_string($disk) && $disk !== '' && $disk !== 'local' ? $disk : null;
+    }
+
+    private function replicate(string $filename): ?string
+    {
+        $disk = $this->offsiteDisk();
+
+        if ($disk === null) {
+            return null;
+        }
+
+        $relativePath = 'backups/'.$filename;
+        if (! Storage::disk('local')->exists($relativePath)) {
+            throw new RuntimeException("File backup {$filename} tidak ditemukan pada storage lokal.");
+        }
+
+        $stream = Storage::disk('local')->readStream($relativePath);
+        if ($stream === null) {
+            throw new RuntimeException("File backup {$filename} tidak dapat dibaca untuk replikasi offsite.");
+        }
+
+        try {
+            if (! Storage::disk($disk)->put($relativePath, $stream)) {
+                throw new RuntimeException("File backup {$filename} gagal disalin ke disk offsite {$disk}.");
+            }
+        } finally {
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+        }
+
+        return $disk;
     }
 
     private function backupSqlite(string $absolutePath): void

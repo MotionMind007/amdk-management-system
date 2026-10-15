@@ -29,8 +29,8 @@ class UatSeeder extends Seeder
 
         $password = config('operations.uat.password');
 
-        if (! is_string($password) || mb_strlen($password) < 8) {
-            throw new RuntimeException('Atur UAT_PASSWORD minimal 8 karakter sebelum menjalankan UatSeeder.');
+        if (! is_string($password) || mb_strlen($password) < 12) {
+            throw new RuntimeException('Atur UAT_PASSWORD minimal 12 karakter sebelum menjalankan UatSeeder.');
         }
 
         DB::transaction(function () use ($openingStockService, $password): void {

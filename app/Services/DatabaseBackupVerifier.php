@@ -11,6 +11,8 @@ use Symfony\Component\Process\Process;
 
 class DatabaseBackupVerifier
 {
+    public function __construct(private DatabaseBackupService $backups) {}
+
     /** @return array{filename: string, driver: string, checksum: string, tables: int, rows: int|null, verified_at: int} */
     public function verify(?string $filename = null): array
     {
@@ -37,6 +39,7 @@ class DatabaseBackupVerifier
             'backups/'.$filename.'.verified.json',
             json_encode($verification, JSON_THROW_ON_ERROR),
         );
+        $this->backups->replicateVerified($filename);
 
         return $verification;
     }

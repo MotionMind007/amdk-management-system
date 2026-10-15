@@ -9,3 +9,8 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('finance:send-due-reminders')->dailyAt('08:00')->withoutOverlapping();
+Schedule::command('system:backup-database')
+    ->dailyAt('01:00')
+    ->environments(['production'])
+    ->onOneServer()
+    ->withoutOverlapping(180);
