@@ -22,12 +22,13 @@ class VerifyDatabaseBackup extends Command
             return self::FAILURE;
         }
 
-        $this->table(['File', 'Driver', 'Checksum SHA-256', 'Tabel', 'Baris'], [[
+        $this->table(['File', 'Driver', 'Checksum SHA-256', 'Tabel', 'Baris', 'Integritas'], [[
             $result['filename'],
             $result['driver'],
             $result['checksum'],
             $result['tables'],
             $result['rows'] ?? 'Diverifikasi saat restore',
+            $result['integrity_checks'].' pemeriksaan lulus',
         ]]);
         $this->info('Backup berhasil dipulihkan dan diverifikasi di database sementara. Database aktif tidak diubah.');
 

@@ -25,7 +25,7 @@ class CreateDatabaseBackup extends Command
 
         if ($this->option('verify')) {
             $verification = $verifier->verify($backup['filename']);
-            $this->info("Restore backup terverifikasi: {$verification['tables']} tabel.");
+            $this->info("Restore backup terverifikasi: {$verification['tables']} tabel dan {$verification['integrity_checks']} pemeriksaan integritas operasional lulus.");
         }
 
         return self::SUCCESS;

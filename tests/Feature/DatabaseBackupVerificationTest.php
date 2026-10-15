@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\CashAccount;
 use App\Models\User;
 use App\Services\DatabaseBackupService;
 use App\Services\DatabaseBackupVerifier;
@@ -34,7 +35,9 @@ class DatabaseBackupVerificationTest extends TestCase
         $this->assertSame(64, strlen($result['checksum']));
         $this->assertGreaterThan(0, $result['tables']);
         $this->assertGreaterThanOrEqual($usersBeforeVerification, $result['rows']);
+        $this->assertSame(4, $result['integrity_checks']);
         $this->assertSame($usersBeforeVerification, User::count());
+        $this->assertNull(config('database.connections.backup_verification'));
         $this->assertEqualsCanonicalizing([
             'backups/'.$backup['filename'],
             'backups/'.$backup['filename'].'.verified.json',
@@ -60,6 +63,37 @@ class DatabaseBackupVerificationTest extends TestCase
         }
 
         $this->assertSame(['backups/'.$filename], Storage::disk('local')->allFiles('backups'));
+        $this->assertNull(config('database.connections.backup_verification'));
+    }
+
+    public function test_restored_backup_with_operational_mismatch_fails_verification(): void
+    {
+        if (DB::connection()->getDriverName() !== 'sqlite') {
+            $this->markTestSkipped('Restore SQLite hanya diuji pada koneksi SQLite.');
+        }
+
+        $this->fakeLocalStorage();
+        CashAccount::query()->create([
+            'code' => 'KAS-RUSAK',
+            'name' => 'Kas Tidak Konsisten',
+            'type' => 'cash',
+            'balance' => 100000,
+            'is_active' => true,
+        ]);
+        $backup = app(DatabaseBackupService::class)->create();
+
+        try {
+            app(DatabaseBackupVerifier::class)->verify($backup['filename']);
+            $this->fail('Backup dengan saldo operasional tidak konsisten seharusnya gagal diverifikasi.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame(
+                'Database hasil restore gagal pemeriksaan integritas operasional: cash.',
+                $exception->getMessage(),
+            );
+        }
+
+        Storage::disk('local')->assertMissing('backups/'.$backup['filename'].'.verified.json');
+        $this->assertNull(config('database.connections.backup_verification'));
     }
 
     public function test_verify_backup_command_uses_latest_backup(): void

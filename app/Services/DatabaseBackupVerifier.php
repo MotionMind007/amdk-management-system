@@ -11,9 +11,14 @@ use Symfony\Component\Process\Process;
 
 class DatabaseBackupVerifier
 {
-    public function __construct(private DatabaseBackupService $backups) {}
+    private const TEMPORARY_CONNECTION = 'backup_verification';
 
-    /** @return array{filename: string, driver: string, checksum: string, tables: int, rows: int|null, verified_at: int} */
+    public function __construct(
+        private DatabaseBackupService $backups,
+        private OperationalIntegrityService $integrity,
+    ) {}
+
+    /** @return array{filename: string, driver: string, checksum: string, tables: int, rows: int|null, integrity_checks: int, verified_at: int} */
     public function verify(?string $filename = null): array
     {
         $filename ??= $this->latestFilename();
@@ -32,6 +37,7 @@ class DatabaseBackupVerifier
             'checksum' => hash_file('sha256', $absolutePath),
             'tables' => $result['tables'],
             'rows' => $result['rows'],
+            'integrity_checks' => $result['integrity_checks'],
             'verified_at' => now()->timestamp,
         ];
 
@@ -73,7 +79,7 @@ class DatabaseBackupVerifier
         return Storage::disk('local')->path($relativePath);
     }
 
-    /** @return array{tables: int, rows: int} */
+    /** @return array{tables: int, rows: int, integrity_checks: int} */
     private function verifySqlite(string $absolutePath): array
     {
         $temporaryPath = dirname($absolutePath).DIRECTORY_SEPARATOR.'.verify-'.Str::uuid().'.sqlite';
@@ -106,8 +112,13 @@ class DatabaseBackupVerifier
 
                 return (int) $pdo->query("SELECT COUNT(*) FROM {$quotedTable}")->fetchColumn();
             });
+            $integrityChecks = $this->verifyOperationalIntegrity([
+                ...config('database.connections.sqlite'),
+                'url' => null,
+                'database' => $temporaryPath,
+            ]);
 
-            return ['tables' => count($tables), 'rows' => $rows];
+            return ['tables' => count($tables), 'rows' => $rows, 'integrity_checks' => $integrityChecks];
         } finally {
             $pdo = null;
 
@@ -119,7 +130,7 @@ class DatabaseBackupVerifier
         }
     }
 
-    /** @return array{tables: int, rows: null} */
+    /** @return array{tables: int, rows: null, integrity_checks: int} */
     private function verifyPostgres(string $absolutePath): array
     {
         $connection = DB::connection()->getConfig();
@@ -142,11 +153,43 @@ class DatabaseBackupVerifier
                 throw new RuntimeException('Database hasil restore tidak memiliki tabel aplikasi.');
             }
 
-            return ['tables' => $tables, 'rows' => null];
+            $integrityChecks = $this->verifyOperationalIntegrity([
+                ...$connection,
+                'url' => null,
+                'database' => $database,
+            ]);
+
+            return ['tables' => $tables, 'rows' => null, 'integrity_checks' => $integrityChecks];
         } finally {
             if ($created) {
                 $this->runPsql($connection, $maintenanceDatabase, ['--command=DROP DATABASE IF EXISTS "'.$database.'" WITH (FORCE)']);
             }
+        }
+    }
+
+    /** @param array<string, mixed> $connection */
+    private function verifyOperationalIntegrity(array $connection): int
+    {
+        config(['database.connections.'.self::TEMPORARY_CONNECTION => $connection]);
+        DB::purge(self::TEMPORARY_CONNECTION);
+
+        try {
+            $result = $this->integrity->check(self::TEMPORARY_CONNECTION);
+
+            if (! $result['healthy']) {
+                $failedAreas = collect($result['checks'])
+                    ->reject(fn (array $check): bool => $check['healthy'])
+                    ->keys()
+                    ->implode(', ');
+
+                throw new RuntimeException("Database hasil restore gagal pemeriksaan integritas operasional: {$failedAreas}.");
+            }
+
+            return count($result['checks']);
+        } finally {
+            DB::disconnect(self::TEMPORARY_CONNECTION);
+            DB::purge(self::TEMPORARY_CONNECTION);
+            config(['database.connections.'.self::TEMPORARY_CONNECTION => null]);
         }
     }
 

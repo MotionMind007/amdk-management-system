@@ -133,6 +133,18 @@ Verifikasi backup:
 php artisan system:verify-backup
 ```
 
+Perintah verifikasi memulihkan backup ke database sementara, menjalankan pemeriksaan native database, lalu memeriksa konsistensi stok, piutang, hutang, serta kas/bank. Database aktif tidak diubah dan database sementara selalu dihapus setelah proses selesai.
+
+Recovery drill sebelum release candidate:
+
+```bash
+php artisan system:backup-database --verify
+php artisan system:check-integrity
+composer test:uat
+```
+
+Drill dinyatakan lulus hanya jika restore sementara, empat pemeriksaan integritas operasional, pemeriksaan database aktif, dan seluruh skenario UAT selesai tanpa kegagalan. Simpan checksum serta waktu verifikasi yang tercatat pada halaman Backup Database sebagai bukti drill.
+
 Verifikasi PostgreSQL membuat database sementara. Jalankan melalui prosedur maintenance dengan kredensial khusus yang memiliki izin membuat dan menghapus database; jangan memberikan izin tersebut secara permanen kepada akun aplikasi web.
 
 Prosedur recovery:
