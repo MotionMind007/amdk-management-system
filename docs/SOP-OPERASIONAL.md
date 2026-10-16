@@ -12,6 +12,23 @@ SOP ini mengatur penggunaan harian aplikasi. Semua koreksi harus dilakukan melal
 
 Setiap user wajib memakai akun pribadi dan tidak boleh membagikan password.
 
+## Migrasi Awal dan Cutover
+
+Migrasi hanya dilakukan oleh Super Admin atau Owner pada database kosong/terkendali dan selalu diawali backup terverifikasi.
+
+1. Tetapkan tanggal cutover dan hentikan perubahan pada catatan manual setelah proses hitung fisik dimulai.
+2. Impor berurutan: gudang, produk, pelanggan, supplier, karyawan, stok awal, lalu saldo awal kas/bank.
+3. Gunakan template CSV dari menu **Sistem Admin > Migrasi Data** tanpa mengubah nama kolom.
+4. Periksa seluruh baris pada preview. Konfirmasi hanya jika jumlah baris valid sama dengan sumber dan tidak ada baris bermasalah.
+5. Admin memeriksa master pelanggan, supplier, dan produk. Karyawan terkait menguji login awal lalu segera mengganti password.
+6. Gudang mencocokkan draft Stok Awal dengan hasil hitung fisik. Owner atau Super Admin memposting draft setelah disetujui.
+7. Admin mencocokkan saldo kas/bank dengan berita acara kas dan rekening koran pada tanggal cutover.
+8. Piutang dan hutang lama tidak boleh dimasukkan sebagai penjualan atau pembelian palsu. Catat melalui dokumen resmi setelah daftar saldo per pihak dan nomor referensinya disetujui Owner.
+9. Jalankan `php artisan system:check-integrity`; seluruh pemeriksaan wajib berstatus OK sebelum transaksi harian dibuka.
+10. Simpan file sumber, hasil preview, total kontrol, dan persetujuan Owner sebagai bukti migrasi.
+
+Jika ada kesalahan setelah stok awal diposting, gunakan Penyesuaian Stok dengan alasan lengkap. Jangan mengulang impor atau mengubah database langsung.
+
 ## Pemeriksaan Awal Hari
 
 1. Login dan periksa notifikasi.

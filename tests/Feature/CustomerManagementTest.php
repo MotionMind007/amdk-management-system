@@ -17,10 +17,10 @@ class CustomerManagementTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)->post('/customers', [
-            'customer_code' => 'CUS-001',
-            'name' => 'Toko Papua Jaya',
+            'customer_code' => ' cus-001 ',
+            'name' => ' Toko Papua Jaya ',
             'phone' => '08123456789',
-            'email' => 'papua@example.com',
+            'email' => ' PAPUA@EXAMPLE.COM ',
             'address' => 'Jayapura',
             'credit_limit' => '5000000',
             'payment_term' => 14,
@@ -31,6 +31,7 @@ class CustomerManagementTest extends TestCase
         $customer = Customer::query()->where('customer_code', 'CUS-001')->firstOrFail();
         $response->assertRedirect(route('customers.index'));
         $this->assertSame('Toko Papua Jaya', $customer->name);
+        $this->assertSame('papua@example.com', $customer->email);
         $this->assertDatabaseHas('audit_logs', [
             'user_id' => $user->id,
             'action' => 'CREATE',
@@ -52,7 +53,7 @@ class CustomerManagementTest extends TestCase
         Customer::factory()->create(['customer_code' => 'CUS-001']);
 
         $response = $this->actingAs($user)->from('/customers/create')->post('/customers', [
-            'customer_code' => 'CUS-001',
+            'customer_code' => ' cus-001 ',
             'name' => 'Pelanggan Lain',
             'credit_limit' => 0,
             'payment_term' => 0,

@@ -92,7 +92,7 @@ class DataImportController extends Controller
             }
 
             $count = DB::transaction(function () use ($request, $metadata, $preview, $importService, $auditService): int {
-                $count = $importService->import($metadata['type'], $preview['rows']);
+                $count = $importService->import($metadata['type'], $preview['rows'], $request->user());
                 $auditService->record(
                     $request,
                     'IMPORT',

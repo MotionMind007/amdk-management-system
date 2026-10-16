@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class AuthenticationTest extends TestCase
@@ -47,5 +48,21 @@ class AuthenticationTest extends TestCase
         $response->assertSessionHasErrors(['email' => 'Email atau password tidak sesuai.']);
         $this->assertGuest();
         $this->assertDatabaseCount('audit_logs', 0);
+    }
+
+    public function test_logout_removes_pending_sensitive_import_file(): void
+    {
+        Storage::fake('local');
+        $user = User::factory()->create();
+        $path = "data-imports/{$user->id}/pending.csv";
+        Storage::disk('local')->put($path, 'password_awal');
+
+        $this->actingAs($user)
+            ->withSession(['data_imports' => ['token' => ['path' => $path]]])
+            ->post(route('logout'))
+            ->assertRedirect(route('login'));
+
+        Storage::disk('local')->assertMissing($path);
+        $this->assertGuest();
     }
 }

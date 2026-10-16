@@ -9,6 +9,15 @@ use Illuminate\Validation\Rule;
 
 class ProductRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'sku' => strtoupper(trim((string) $this->input('sku'))),
+            'name' => trim((string) $this->input('name')),
+            'notes' => $this->filled('notes') ? trim((string) $this->input('notes')) : null,
+        ]);
+    }
+
     /**
      * Determine if the user is authorized to make this request.
      */

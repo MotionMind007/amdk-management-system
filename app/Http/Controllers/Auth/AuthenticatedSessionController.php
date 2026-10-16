@@ -8,6 +8,7 @@ use App\Services\AuditService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class AuthenticatedSessionController extends Controller
@@ -38,6 +39,15 @@ class AuthenticatedSessionController extends Controller
     public function destroy(Request $request, AuditService $auditService): RedirectResponse
     {
         $auditService->record($request, 'LOGOUT', 'Authentication', $request->user());
+
+        foreach ($request->session()->get('data_imports', []) as $pendingImport) {
+            $path = is_array($pendingImport) ? ($pendingImport['path'] ?? null) : null;
+
+            if (is_string($path) && str_starts_with($path, 'data-imports/')) {
+                Storage::disk('local')->delete($path);
+            }
+        }
+
         Auth::guard('web')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

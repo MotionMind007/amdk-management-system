@@ -10,6 +10,19 @@ use Illuminate\Validation\Rules\Password;
 
 class EmployeeRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'employee_code' => strtoupper(trim((string) $this->input('employee_code'))),
+            'name' => trim((string) $this->input('name')),
+            'phone' => $this->filled('phone') ? trim((string) $this->input('phone')) : null,
+            'email' => strtolower(trim((string) $this->input('email'))),
+            'address' => $this->filled('address') ? trim((string) $this->input('address')) : null,
+            'position' => trim((string) $this->input('position')),
+            'department' => trim((string) $this->input('department')),
+        ]);
+    }
+
     public function authorize(): bool
     {
         $user = $this->user();

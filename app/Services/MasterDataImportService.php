@@ -2,49 +2,90 @@
 
 namespace App\Services;
 
+use App\Models\CashAccount;
+use App\Models\CashTransaction;
 use App\Models\Customer;
+use App\Models\OpeningStock;
 use App\Models\Product;
 use App\Models\Supplier;
 use App\Models\Unit;
+use App\Models\User;
 use App\Models\Warehouse;
 use App\ProductType;
+use App\UserRole;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 use RuntimeException;
 
 class MasterDataImportService
 {
     /** @var list<string> */
-    public const TYPES = ['products', 'customers', 'suppliers', 'warehouses'];
+    public const TYPES = ['products', 'customers', 'suppliers', 'warehouses', 'employees', 'opening_stocks', 'cash_balances'];
 
     /** @var array<string, int>|null */
     private ?array $unitIdsByCode = null;
 
-    /** @return array<string, array{label: string, columns: list<string>, example: list<string>}> */
+    /** @var array<string, int>|null */
+    private ?array $productIdsBySku = null;
+
+    /** @var array<string, int>|null */
+    private ?array $warehouseIdsByCode = null;
+
+    public function __construct(
+        private readonly DocumentNumberService $documentNumbers,
+        private readonly AccountingPeriodService $accountingPeriods,
+    ) {}
+
+    /** @return array<string, array{label: string, columns: list<string>, example: list<string>, description: string, masked_columns?: list<string>}> */
     public function definitions(): array
     {
         return [
             'products' => [
                 'label' => 'Master Produk',
+                'description' => 'Produk jadi, bahan baku, bahan kemasan, dan barang setengah jadi.',
                 'columns' => ['sku', 'nama', 'jenis', 'kode_satuan', 'stok_minimum', 'stok_maksimum', 'aktif', 'catatan'],
                 'example' => ['RH-600ML', 'Robong Holo 600ml', 'produk_jadi', 'KRT', '10', '500', 'ya', 'Opsional'],
             ],
             'customers' => [
                 'label' => 'Pelanggan',
+                'description' => 'Identitas pelanggan, batas kredit, dan termin pembayaran.',
                 'columns' => ['kode_pelanggan', 'nama', 'telepon', 'email', 'alamat', 'batas_kredit', 'termin_hari', 'aktif', 'catatan'],
                 'example' => ['PLG-001', 'Toko Contoh', '08123456789', 'toko@example.com', 'Jayapura', '5000000', '30', 'ya', 'Opsional'],
             ],
             'suppliers' => [
                 'label' => 'Supplier',
+                'description' => 'Identitas pemasok dan termin pembayaran.',
                 'columns' => ['kode_supplier', 'nama', 'telepon', 'email', 'alamat', 'termin_hari', 'aktif', 'catatan'],
                 'example' => ['SUP-001', 'Supplier Contoh', '08123456789', 'supplier@example.com', 'Jayapura', '30', 'ya', 'Opsional'],
             ],
             'warehouses' => [
                 'label' => 'Gudang',
+                'description' => 'Daftar lokasi penyimpanan aktif maupun nonaktif.',
                 'columns' => ['kode_gudang', 'nama', 'alamat', 'aktif'],
                 'example' => ['GDG-02', 'Gudang Kedua', 'Jayapura', 'ya'],
+            ],
+            'employees' => [
+                'label' => 'Karyawan & User Login',
+                'description' => 'Membuat data karyawan sekaligus akun login. Password hanya dipakai saat impor dan tidak ditampilkan di preview.',
+                'columns' => ['kode_karyawan', 'nama', 'telepon', 'email_login', 'alamat', 'jabatan', 'departemen', 'tanggal_masuk', 'role', 'password_awal', 'aktif'],
+                'example' => ['KRY-001', 'Karyawan Contoh', '08123456789', 'karyawan@example.com', 'Jayapura', 'Operator', 'Gudang', '2026-01-01', 'warehouse', 'GantiPassword123!', 'ya'],
+                'masked_columns' => ['password_awal'],
+            ],
+            'opening_stocks' => [
+                'label' => 'Stok Awal',
+                'description' => 'Membuat draft stok awal per tanggal dan gudang. Draft wajib diperiksa lalu diposting dari menu Stok Awal.',
+                'columns' => ['tanggal_stok', 'kode_gudang', 'sku', 'jumlah', 'catatan'],
+                'example' => ['2026-01-01', 'GDG-01', 'RH-600ML', '100', 'Hasil hitung fisik saat cutover'],
+            ],
+            'cash_balances' => [
+                'label' => 'Saldo Awal Kas/Bank',
+                'description' => 'Membuat akun kas atau bank baru beserta transaksi saldo awal yang tercatat di ledger.',
+                'columns' => ['kode_akun', 'nama_akun', 'jenis', 'tanggal_saldo', 'saldo_awal', 'aktif'],
+                'example' => ['BANK-BRI', 'Bank BRI', 'bank', '2026-01-01', '10000000', 'ya'],
             ],
         ];
     }
@@ -54,21 +95,62 @@ class MasterDataImportService
     {
         $definition = $this->definition($type);
         $records = $this->readCsv($path, $definition['columns']);
-        $existingCodes = $this->existingCodes($type);
-        $seenCodes = [];
+        $seenIdentities = [];
+        $seenEmployeeEmails = [];
         $rows = [];
 
         foreach ($records as $record) {
             $data = $this->normalize($type, $record['values']);
             $validator = Validator::make($data, $this->rules($type), [], $this->attributes($type));
-            $code = (string) ($data[$this->codeField($type)] ?? '');
+            $identity = $this->rowIdentity($type, $data);
 
-            if ($code !== '' && isset($existingCodes[$code])) {
-                $validator->after(fn ($validator) => $validator->errors()->add($this->codeField($type), 'Kode sudah digunakan.'));
-            } elseif ($code !== '' && isset($seenCodes[$code])) {
-                $validator->after(fn ($validator) => $validator->errors()->add($this->codeField($type), "Kode duplikat dengan baris {$seenCodes[$code]}."));
-            } elseif ($code !== '') {
-                $seenCodes[$code] = $record['line'];
+            if ($identity !== '' && isset($seenIdentities[$identity])) {
+                $message = $type === 'opening_stocks'
+                    ? "Data duplikat dengan baris {$seenIdentities[$identity]}."
+                    : "Kode duplikat dengan baris {$seenIdentities[$identity]}.";
+                $validator->after(fn ($validator) => $validator->errors()->add('row', $message));
+            } elseif ($identity !== '') {
+                $seenIdentities[$identity] = $record['line'];
+            }
+
+            if ($type === 'employees' && ($data['email'] ?? '') !== '') {
+                $email = (string) $data['email'];
+                if (isset($seenEmployeeEmails[$email])) {
+                    $validator->after(fn ($validator) => $validator->errors()->add('email', "Email duplikat dengan baris {$seenEmployeeEmails[$email]}."));
+                } else {
+                    $seenEmployeeEmails[$email] = $record['line'];
+                }
+            }
+
+            if ($type === 'opening_stocks' && $data['product_id'] !== null && $data['warehouse_id'] !== null) {
+                $hasMovement = DB::table('stock_movements')
+                    ->where('product_id', $data['product_id'])
+                    ->where('warehouse_id', $data['warehouse_id'])
+                    ->exists();
+                $hasOpeningDraft = DB::table('opening_stock_items')
+                    ->join('opening_stocks', 'opening_stocks.id', '=', 'opening_stock_items.opening_stock_id')
+                    ->where('opening_stock_items.product_id', $data['product_id'])
+                    ->where('opening_stocks.warehouse_id', $data['warehouse_id'])
+                    ->where('opening_stocks.status', 'draft')
+                    ->exists();
+
+                if ($hasMovement) {
+                    $validator->after(fn ($validator) => $validator->errors()->add('product_id', 'Produk sudah memiliki pergerakan stok di gudang ini. Gunakan Penyesuaian Stok, bukan Stok Awal.'));
+                } elseif ($hasOpeningDraft) {
+                    $validator->after(fn ($validator) => $validator->errors()->add('product_id', 'Produk sudah terdapat pada draft stok awal di gudang ini.'));
+                }
+            }
+
+            if (in_array($type, ['opening_stocks', 'cash_balances'], true)) {
+                $date = $data[$type === 'opening_stocks' ? 'stock_date' : 'transaction_date'] ?? null;
+                $parsedDate = is_string($date) ? date_create($date) : false;
+
+                if ($parsedDate !== false && DB::table('accounting_periods')
+                    ->where('period', $parsedDate->format('Y-m'))
+                    ->where('status', 'closed')
+                    ->exists()) {
+                    $validator->after(fn ($validator) => $validator->errors()->add('date', "Periode {$parsedDate->format('Y-m')} sudah ditutup."));
+                }
             }
 
             $errors = $validator->errors()->all();
@@ -88,15 +170,21 @@ class MasterDataImportService
     }
 
     /** @param list<array{data: array<string, mixed>}> $rows */
-    public function import(string $type, array $rows): int
+    public function import(string $type, array $rows, User $user): int
     {
-        return DB::transaction(function () use ($type, $rows): int {
+        return DB::transaction(function () use ($type, $rows, $user): int {
+            if ($type === 'opening_stocks') {
+                return $this->importOpeningStocks($rows, $user);
+            }
+
             foreach ($rows as $row) {
                 match ($type) {
                     'products' => Product::query()->create($row['data']),
                     'customers' => Customer::query()->create($row['data']),
                     'suppliers' => Supplier::query()->create($row['data']),
                     'warehouses' => Warehouse::query()->create($row['data']),
+                    'employees' => $this->importEmployee($row['data']),
+                    'cash_balances' => $this->importCashBalance($row['data'], $user),
                     default => throw new RuntimeException('Jenis impor tidak didukung.'),
                 };
             }
@@ -105,7 +193,7 @@ class MasterDataImportService
         });
     }
 
-    /** @return array{label: string, columns: list<string>, example: list<string>} */
+    /** @return array{label: string, columns: list<string>, example: list<string>, description: string, masked_columns?: list<string>} */
     public function definition(string $type): array
     {
         return $this->definitions()[$type] ?? throw new RuntimeException('Jenis impor tidak didukung.');
@@ -217,6 +305,34 @@ class MasterDataImportService
                 'address' => $this->nullable($values['alamat']),
                 'is_active' => $this->booleanValue($values['aktif']),
             ],
+            'employees' => [
+                'employee_code' => mb_strtoupper($values['kode_karyawan']),
+                'name' => $values['nama'],
+                'phone' => $this->nullable($values['telepon']),
+                'email' => mb_strtolower($values['email_login']),
+                'address' => $this->nullable($values['alamat']),
+                'position' => $values['jabatan'],
+                'department' => $values['departemen'],
+                'join_date' => $this->nullable($values['tanggal_masuk']),
+                'role' => mb_strtolower($values['role']),
+                'password' => $values['password_awal'],
+                'status' => $this->statusValue($values['aktif']),
+            ],
+            'opening_stocks' => [
+                'stock_date' => $values['tanggal_stok'],
+                'warehouse_id' => $this->warehouseId($values['kode_gudang']),
+                'product_id' => $this->productId($values['sku']),
+                'quantity' => $values['jumlah'],
+                'notes' => $this->nullable($values['catatan']),
+            ],
+            'cash_balances' => [
+                'code' => mb_strtoupper($values['kode_akun']),
+                'name' => $values['nama_akun'],
+                'type' => mb_strtolower($values['jenis']),
+                'transaction_date' => $values['tanggal_saldo'],
+                'balance' => $values['saldo_awal'],
+                'is_active' => $this->booleanValue($values['aktif']),
+            ],
             default => [],
         };
     }
@@ -226,7 +342,7 @@ class MasterDataImportService
     {
         return match ($type) {
             'products' => [
-                'sku' => ['required', 'string', 'max:50'],
+                'sku' => ['required', 'string', 'max:50', Rule::unique('products', 'sku')],
                 'name' => ['required', 'string', 'max:255'],
                 'unit_id' => ['required', 'integer', 'exists:units,id'],
                 'type' => ['required', Rule::enum(ProductType::class)],
@@ -236,7 +352,7 @@ class MasterDataImportService
                 'notes' => ['nullable', 'string', 'max:2000'],
             ],
             'customers' => [
-                'customer_code' => ['required', 'string', 'max:30'],
+                'customer_code' => ['required', 'string', 'max:30', Rule::unique('customers', 'customer_code')],
                 'name' => ['required', 'string', 'max:255'],
                 'phone' => ['nullable', 'string', 'max:30'],
                 'email' => ['nullable', 'email', 'max:255'],
@@ -247,7 +363,7 @@ class MasterDataImportService
                 'notes' => ['nullable', 'string', 'max:2000'],
             ],
             'suppliers' => [
-                'supplier_code' => ['required', 'string', 'max:30'],
+                'supplier_code' => ['required', 'string', 'max:30', Rule::unique('suppliers', 'supplier_code')],
                 'name' => ['required', 'string', 'max:255'],
                 'phone' => ['nullable', 'string', 'max:30'],
                 'email' => ['nullable', 'email', 'max:255'],
@@ -257,9 +373,37 @@ class MasterDataImportService
                 'notes' => ['nullable', 'string', 'max:2000'],
             ],
             'warehouses' => [
-                'code' => ['required', 'string', 'max:30'],
+                'code' => ['required', 'string', 'max:30', Rule::unique('warehouses', 'code')],
                 'name' => ['required', 'string', 'max:255'],
                 'address' => ['nullable', 'string', 'max:2000'],
+                'is_active' => ['required', 'boolean'],
+            ],
+            'employees' => [
+                'employee_code' => ['required', 'string', 'max:30', Rule::unique('employees', 'employee_code')],
+                'name' => ['required', 'string', 'max:255'],
+                'phone' => ['nullable', 'string', 'max:30'],
+                'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email'), Rule::unique('employees', 'email')],
+                'address' => ['nullable', 'string', 'max:2000'],
+                'position' => ['required', 'string', 'max:255'],
+                'department' => ['required', 'string', 'max:255'],
+                'join_date' => ['nullable', 'date'],
+                'role' => ['required', Rule::enum(UserRole::class)],
+                'password' => ['required', Password::defaults()],
+                'status' => ['required', Rule::in(['active', 'inactive'])],
+            ],
+            'opening_stocks' => [
+                'stock_date' => ['required', 'date', 'before_or_equal:today'],
+                'warehouse_id' => ['required', 'integer', Rule::exists('warehouses', 'id')->where('is_active', true)],
+                'product_id' => ['required', 'integer', Rule::exists('products', 'id')->where('is_active', true)->whereNull('deleted_at')],
+                'quantity' => ['required', 'numeric', 'gt:0'],
+                'notes' => ['nullable', 'string', 'max:2000'],
+            ],
+            'cash_balances' => [
+                'code' => ['required', 'string', 'max:30', Rule::unique('cash_accounts', 'code')],
+                'name' => ['required', 'string', 'max:255'],
+                'type' => ['required', Rule::in(['cash', 'bank'])],
+                'transaction_date' => ['required', 'date', 'before_or_equal:today'],
+                'balance' => ['required', 'numeric', 'min:0', 'max:9999999999999999.99'],
                 'is_active' => ['required', 'boolean'],
             ],
             default => [],
@@ -274,36 +418,25 @@ class MasterDataImportService
             'customers' => ['customer_code' => 'kode pelanggan', 'name' => 'nama', 'credit_limit' => 'batas kredit', 'payment_term' => 'termin hari', 'status' => 'aktif'],
             'suppliers' => ['supplier_code' => 'kode supplier', 'name' => 'nama', 'payment_term' => 'termin hari', 'status' => 'aktif'],
             'warehouses' => ['code' => 'kode gudang', 'name' => 'nama', 'is_active' => 'aktif'],
+            'employees' => ['employee_code' => 'kode karyawan', 'name' => 'nama', 'email' => 'email login', 'position' => 'jabatan', 'department' => 'departemen', 'join_date' => 'tanggal masuk', 'role' => 'role', 'password' => 'password awal', 'status' => 'aktif'],
+            'opening_stocks' => ['stock_date' => 'tanggal stok', 'warehouse_id' => 'kode gudang', 'product_id' => 'SKU', 'quantity' => 'jumlah'],
+            'cash_balances' => ['code' => 'kode akun', 'name' => 'nama akun', 'type' => 'jenis', 'transaction_date' => 'tanggal saldo', 'balance' => 'saldo awal', 'is_active' => 'aktif'],
             default => [],
         };
     }
 
-    private function codeField(string $type): string
+    /** @param array<string, mixed> $data */
+    private function rowIdentity(string $type, array $data): string
     {
         return match ($type) {
-            'products' => 'sku',
-            'customers' => 'customer_code',
-            'suppliers' => 'supplier_code',
-            'warehouses' => 'code',
-            default => 'code',
+            'products' => (string) ($data['sku'] ?? ''),
+            'customers' => (string) ($data['customer_code'] ?? ''),
+            'suppliers' => (string) ($data['supplier_code'] ?? ''),
+            'warehouses', 'cash_balances' => (string) ($data['code'] ?? ''),
+            'employees' => (string) ($data['employee_code'] ?? ''),
+            'opening_stocks' => implode('|', [$data['stock_date'] ?? '', $data['warehouse_id'] ?? '', $data['product_id'] ?? '']),
+            default => '',
         };
-    }
-
-    /** @return array<string, true> */
-    private function existingCodes(string $type): array
-    {
-        [$table, $column] = match ($type) {
-            'products' => ['products', 'sku'],
-            'customers' => ['customers', 'customer_code'],
-            'suppliers' => ['suppliers', 'supplier_code'],
-            'warehouses' => ['warehouses', 'code'],
-            default => throw new RuntimeException('Jenis impor tidak didukung.'),
-        };
-
-        return DB::table($table)
-            ->pluck($column)
-            ->mapWithKeys(fn (string $code): array => [mb_strtoupper($code) => true])
-            ->all();
     }
 
     private function unitId(string $code): ?int
@@ -314,6 +447,94 @@ class MasterDataImportService
             ->all();
 
         return $this->unitIdsByCode[mb_strtoupper($code)] ?? null;
+    }
+
+    private function productId(string $sku): ?int
+    {
+        $this->productIdsBySku ??= Product::query()
+            ->where('is_active', true)
+            ->get(['id', 'sku'])
+            ->mapWithKeys(fn (Product $product): array => [mb_strtoupper($product->sku) => $product->id])
+            ->all();
+
+        return $this->productIdsBySku[mb_strtoupper($sku)] ?? null;
+    }
+
+    private function warehouseId(string $code): ?int
+    {
+        $this->warehouseIdsByCode ??= Warehouse::query()
+            ->where('is_active', true)
+            ->get(['id', 'code'])
+            ->mapWithKeys(fn (Warehouse $warehouse): array => [mb_strtoupper($warehouse->code) => $warehouse->id])
+            ->all();
+
+        return $this->warehouseIdsByCode[mb_strtoupper($code)] ?? null;
+    }
+
+    /** @param array<string, mixed> $data */
+    private function importEmployee(array $data): void
+    {
+        $user = User::query()->create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'password' => $data['password'],
+            'role' => $data['role'],
+            'is_active' => $data['status'] === 'active',
+        ]);
+
+        unset($data['password'], $data['role']);
+        $user->employee()->create($data);
+    }
+
+    /** @param list<array{data: array<string, mixed>}> $rows */
+    private function importOpeningStocks(array $rows, User $user): int
+    {
+        $groups = collect($rows)->groupBy(fn (array $row): string => $row['data']['stock_date'].'|'.$row['data']['warehouse_id']);
+
+        foreach ($groups as $group) {
+            $first = $group->first()['data'];
+            $openingStock = OpeningStock::query()->create([
+                'number' => $this->documentNumbers->next('OPEN', Carbon::parse($first['stock_date'])->year),
+                'stock_date' => $first['stock_date'],
+                'warehouse_id' => $first['warehouse_id'],
+                'status' => 'draft',
+                'notes' => collect($group)->pluck('data.notes')->filter()->unique()->implode('; ') ?: 'Impor migrasi data awal',
+                'created_by' => $user->id,
+            ]);
+
+            $openingStock->items()->createMany(collect($group)->map(fn (array $row): array => [
+                'product_id' => $row['data']['product_id'],
+                'quantity' => $row['data']['quantity'],
+            ])->all());
+        }
+
+        return count($rows);
+    }
+
+    /** @param array<string, mixed> $data */
+    private function importCashBalance(array $data, User $user): void
+    {
+        $this->accountingPeriods->ensureOpen($data['transaction_date']);
+        $balance = (string) $data['balance'];
+        $account = CashAccount::query()->create([
+            'code' => $data['code'],
+            'name' => $data['name'],
+            'type' => $data['type'],
+            'balance' => $balance,
+            'is_active' => $data['is_active'],
+        ]);
+
+        if (bccomp($balance, '0', 2) === 1) {
+            CashTransaction::query()->create([
+                'cash_account_id' => $account->id,
+                'transaction_date' => $data['transaction_date'],
+                'direction' => 'in',
+                'amount' => $balance,
+                'reference_number' => $this->documentNumbers->next('CASH-OPEN', Carbon::parse($data['transaction_date'])->year),
+                'description' => 'Saldo awal migrasi '.$account->name,
+                'user_id' => $user->id,
+            ]);
+        }
     }
 
     private function booleanValue(string $value): ?bool

@@ -47,4 +47,43 @@ class PeriodClosingTest extends TestCase
         $this->actingAs($owner)->post(route('finance.periods.store'), ['period' => '2026-09'])->assertRedirect();
         $this->assertDatabaseHas(AccountingPeriod::class, ['period' => '2026-09', 'status' => 'closed']);
     }
+
+    public function test_period_cannot_be_closed_while_operational_documents_are_still_draft(): void
+    {
+        $owner = User::factory()->create(['role' => UserRole::Owner]);
+        Sale::query()->create([
+            'number' => 'INV-DRAFT-PERIOD',
+            'customer_id' => Customer::factory()->create()->id,
+            'warehouse_id' => Warehouse::factory()->create()->id,
+            'sale_date' => '2026-10-15',
+            'status' => 'draft',
+            'total' => 100000,
+            'outstanding_amount' => 0,
+            'created_by' => $owner->id,
+        ]);
+
+        try {
+            app(AccountingPeriodService::class)->close('2026-10', null, $owner);
+            $this->fail('Periode dengan dokumen draft seharusnya tidak dapat ditutup.');
+        } catch (ValidationException $exception) {
+            $this->assertStringContainsString('1 penjualan', $exception->errors()['period'][0]);
+        }
+
+        $this->assertDatabaseMissing('accounting_periods', ['period' => '2026-10', 'status' => 'closed']);
+    }
+
+    public function test_period_cannot_be_closed_when_operational_integrity_is_unhealthy(): void
+    {
+        $owner = User::factory()->create(['role' => UserRole::Owner]);
+        CashAccount::factory()->create(['balance' => 100000]);
+
+        try {
+            app(AccountingPeriodService::class)->close('2026-10', null, $owner);
+            $this->fail('Periode dengan integritas data bermasalah seharusnya tidak dapat ditutup.');
+        } catch (ValidationException $exception) {
+            $this->assertStringContainsString('integritas data bermasalah', $exception->errors()['period'][0]);
+        }
+
+        $this->assertDatabaseMissing('accounting_periods', ['period' => '2026-10', 'status' => 'closed']);
+    }
 }

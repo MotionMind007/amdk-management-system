@@ -98,6 +98,18 @@ Hasil yang diterima: nomor dokumen unik, status dokumen berurutan, bukti dapat d
 4. Jalankan `php artisan system:check-integrity` dan pastikan semua area berstatus OK.
 5. Pastikan file CSV laporan dapat dibuka dan formula dari data pengguna tidak dieksekusi otomatis.
 
+### UAT-07 — Rehearsal Migrasi Data Awal
+
+1. Gunakan database UAT baru dan buat backup sebelum migrasi.
+2. Unduh lalu isi template gudang, produk, pelanggan, supplier, karyawan, stok awal, dan saldo kas/bank dengan data dummy.
+3. Pastikan preview menolak kode duplikat, referensi SKU/gudang yang tidak tersedia, dan format data yang salah.
+4. Konfirmasi impor master. Pastikan akun karyawan dapat login sesuai role dan password tidak tampil pada preview.
+5. Pastikan impor stok awal hanya membuat draft dan belum mengubah saldo stok.
+6. Gudang mencocokkan draft, lalu Owner atau Super Admin mempostingnya. Pastikan saldo dan pergerakan stok sesuai total kontrol.
+7. Pastikan saldo kas/bank sama dengan transaksi ledger pembuka.
+8. Jalankan `php artisan system:check-integrity` dan pastikan seluruh area berstatus OK.
+9. Cocokkan jumlah record serta total stok dan kas dengan file sumber, lalu catat persetujuan Owner.
+
 ## Bukti Otomatis
 
 Perintah `composer test:uat` mencakup:
@@ -109,6 +121,7 @@ Perintah `composer test:uat` mencakup:
 - notifikasi;
 - preview dokumen;
 - pemeriksaan integritas operasional.
+- preview dan konfirmasi migrasi data awal.
 
 Hasil otomatis tidak menggantikan persetujuan user bisnis terhadap istilah, urutan kerja, tampilan cetak, dan kemudahan penggunaan.
 

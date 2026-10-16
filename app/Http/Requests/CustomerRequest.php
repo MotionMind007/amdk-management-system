@@ -8,6 +8,18 @@ use Illuminate\Validation\Rule;
 
 class CustomerRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'customer_code' => strtoupper(trim((string) $this->input('customer_code'))),
+            'name' => trim((string) $this->input('name')),
+            'phone' => $this->filled('phone') ? trim((string) $this->input('phone')) : null,
+            'email' => $this->filled('email') ? strtolower(trim((string) $this->input('email'))) : null,
+            'address' => $this->filled('address') ? trim((string) $this->input('address')) : null,
+            'notes' => $this->filled('notes') ? trim((string) $this->input('notes')) : null,
+        ]);
+    }
+
     /**
      * Determine if the user is authorized to make this request.
      */

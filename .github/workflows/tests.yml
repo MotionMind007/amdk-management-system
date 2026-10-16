@@ -87,7 +87,11 @@ jobs:
           QUEUE_CONNECTION: database
           SESSION_DRIVER: database
           SESSION_SECURE_COOKIE: true
-        run: php artisan system:check-deployment
+          DB_BACKUP_OFFSITE_DISK: backup_offsite
+          DB_BACKUP_OFFSITE_PATH: /tmp/amdk-offsite-backups
+        run: |
+          mkdir -p /tmp/amdk-offsite-backups
+          php artisan system:check-deployment
 
       - name: Audit PHP dependencies
         run: composer audit

@@ -34,7 +34,7 @@ class ProductManagementTest extends TestCase
         $unit = Unit::factory()->create();
 
         $response = $this->actingAs($user)->post(route('products.store'), [
-            'sku' => 'FG-330ML',
+            'sku' => ' fg-330ml ',
             'name' => 'Air Mineral 330 ml',
             'unit_id' => $unit->id,
             'type' => 'finished_good',
@@ -50,6 +50,27 @@ class ProductManagementTest extends TestCase
             'purchase_price' => 0,
             'selling_price' => 0,
         ]);
+    }
+
+    public function test_product_sku_is_unique_after_normalization(): void
+    {
+        $user = User::factory()->administrator()->create();
+        $unit = Unit::factory()->create();
+        Product::factory()->create(['sku' => 'FG-600ML']);
+
+        $this->actingAs($user)
+            ->from(route('products.create'))
+            ->post(route('products.store'), [
+                'sku' => ' fg-600ml ',
+                'name' => 'Produk Duplikat',
+                'unit_id' => $unit->id,
+                'type' => 'finished_good',
+                'minimum_stock' => 0,
+                'is_active' => true,
+            ])
+            ->assertSessionHasErrors(['sku' => 'SKU sudah digunakan.']);
+
+        $this->assertDatabaseCount('products', 1);
     }
 
     public function test_administrator_can_remove_product_from_master_without_deleting_history_record(): void

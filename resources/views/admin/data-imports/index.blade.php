@@ -7,14 +7,15 @@
 
     <div class="mt-5 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
         <p class="font-semibold">Urutan aman migrasi</p>
-        <p class="mt-1">Unduh template, isi tanpa mengubah nama kolom, simpan sebagai CSV, lalu lakukan preview. Data baru tersimpan setelah tombol konfirmasi ditekan. Stok awal tetap dicatat melalui menu Stok Awal agar pergerakan stok dan audit tetap utuh.</p>
+        <p class="mt-1">Unduh template, isi tanpa mengubah nama kolom, simpan sebagai CSV, lalu lakukan preview. Data baru tersimpan setelah tombol konfirmasi ditekan. Impor stok awal menghasilkan draft yang wajib diperiksa dan diposting dari menu Stok Awal.</p>
     </div>
 
-    <div class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         @foreach ($definitions as $type => $definition)
             <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                 <p class="font-semibold text-slate-900">{{ $definition['label'] }}</p>
-                <p class="mt-1 text-xs leading-5 text-slate-500">{{ count($definition['columns']) }} kolom sesuai struktur sistem.</p>
+                <p class="mt-1 text-xs leading-5 text-slate-500">{{ $definition['description'] }}</p>
+                <p class="mt-2 text-xs font-medium text-slate-600">{{ count($definition['columns']) }} kolom sesuai struktur sistem.</p>
                 <a href="{{ route('admin.data-imports.template', $type) }}" class="mt-4 inline-flex min-h-10 items-center text-sm font-semibold text-brand-700">Unduh template CSV</a>
             </div>
         @endforeach
@@ -76,7 +77,13 @@
                                 <tr class="align-top {{ $row['errors'] !== [] ? 'bg-red-50/50' : '' }}">
                                     <td class="px-4 py-3 font-semibold">{{ $row['line'] }}</td>
                                     @foreach ($definitions[$preview['type']]['columns'] as $column)
-                                        <td class="max-w-64 whitespace-nowrap px-4 py-3 text-slate-600">{{ $row['values'][$column] !== '' ? $row['values'][$column] : '—' }}</td>
+                                        <td class="max-w-64 whitespace-nowrap px-4 py-3 text-slate-600">
+                                            @if (in_array($column, $definitions[$preview['type']]['masked_columns'] ?? [], true))
+                                                ••••••••
+                                            @else
+                                                {{ $row['values'][$column] !== '' ? $row['values'][$column] : '—' }}
+                                            @endif
+                                        </td>
                                     @endforeach
                                     <td class="min-w-72 px-4 py-3">
                                         @if ($row['errors'] === [])

@@ -21,10 +21,10 @@ class EmployeeManagementTest extends TestCase
         $administrator = User::factory()->administrator()->create();
 
         $response = $this->actingAs($administrator)->post(route('employees.store'), [
-            'employee_code' => 'EMP-001',
-            'name' => 'Yohanes Wenda',
+            'employee_code' => ' emp-001 ',
+            'name' => ' Yohanes Wenda ',
             'phone' => '081234567890',
-            'email' => 'yohanes@example.com',
+            'email' => ' YOHANES@EXAMPLE.COM ',
             'address' => 'Jayapura',
             'position' => 'Operator Mesin',
             'department' => 'Produksi',

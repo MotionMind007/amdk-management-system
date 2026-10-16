@@ -2,13 +2,21 @@
 
 namespace Tests\Feature;
 
+use App\Models\AccountingPeriod;
 use App\Models\AuditLog;
+use App\Models\CashAccount;
+use App\Models\CashTransaction;
+use App\Models\OpeningStock;
 use App\Models\Product;
+use App\Models\StockMovement;
 use App\Models\Unit;
 use App\Models\User;
+use App\Models\Warehouse;
+use App\Services\OperationalIntegrityService;
 use App\UserRole;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Hash;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -161,5 +169,156 @@ class MasterDataImportTest extends TestCase
         $token = $preview->viewData('token');
         $this->actingAs($secondOwner)->post(route('admin.data-imports.confirm', $token))->assertNotFound();
         $this->assertDatabaseMissing('warehouses', ['code' => 'GDG-02']);
+    }
+
+    public function test_employee_import_creates_employee_and_login_without_exposing_password_in_preview(): void
+    {
+        $this->fakeLocalStorage();
+        $owner = User::factory()->create(['role' => UserRole::Owner]);
+        $file = UploadedFile::fake()->createWithContent(
+            'karyawan.csv',
+            "kode_karyawan;nama;telepon;email_login;alamat;jabatan;departemen;tanggal_masuk;role;password_awal;aktif\nKRY-01;Operator Gudang;0812;operator@example.com;Jayapura;Operator;Gudang;;warehouse;PasswordAwal123!;ya\n",
+        );
+
+        $preview = $this->actingAs($owner)->post(route('admin.data-imports.preview'), [
+            'type' => 'employees',
+            'file' => $file,
+        ]);
+
+        $preview->assertOk()
+            ->assertSee('1 baris valid')
+            ->assertSee('••••••••')
+            ->assertDontSee('PasswordAwal123!');
+
+        $this->post(route('admin.data-imports.confirm', $preview->viewData('token')))
+            ->assertRedirect(route('admin.data-imports.index'));
+
+        $user = User::query()->where('email', 'operator@example.com')->firstOrFail();
+        $this->assertSame(UserRole::Warehouse, $user->role);
+        $this->assertTrue(Hash::check('PasswordAwal123!', $user->password));
+        $this->assertDatabaseHas('employees', [
+            'user_id' => $user->id,
+            'employee_code' => 'KRY-01',
+            'name' => 'Operator Gudang',
+            'join_date' => null,
+        ]);
+    }
+
+    public function test_opening_stock_import_creates_reviewable_drafts_grouped_by_date_and_warehouse(): void
+    {
+        $this->fakeLocalStorage();
+        $owner = User::factory()->create(['role' => UserRole::Owner]);
+        $warehouse = Warehouse::factory()->create(['code' => 'GDG-01', 'is_active' => true]);
+        $firstProduct = Product::factory()->create(['sku' => 'BAHAN-01', 'is_active' => true]);
+        $secondProduct = Product::factory()->create(['sku' => 'BAHAN-02', 'is_active' => true]);
+        $date = today()->toDateString();
+        $file = UploadedFile::fake()->createWithContent(
+            'stok-awal.csv',
+            "tanggal_stok;kode_gudang;sku;jumlah;catatan\n{$date};{$warehouse->code};{$firstProduct->sku};100;Hitung fisik\n{$date};{$warehouse->code};{$secondProduct->sku};50;Hitung fisik\n",
+        );
+
+        $preview = $this->actingAs($owner)->post(route('admin.data-imports.preview'), [
+            'type' => 'opening_stocks',
+            'file' => $file,
+        ]);
+
+        $preview->assertOk()->assertSee('2 baris valid');
+        $this->post(route('admin.data-imports.confirm', $preview->viewData('token')))
+            ->assertRedirect(route('admin.data-imports.index'));
+
+        $openingStock = OpeningStock::query()->sole();
+        $this->assertSame('draft', $openingStock->status);
+        $this->assertSame($warehouse->id, $openingStock->warehouse_id);
+        $this->assertSame(2, $openingStock->items()->count());
+        $this->assertDatabaseCount('stock_movements', 0);
+        $this->assertDatabaseCount('stock_balances', 0);
+
+        $this->post(route('admin.opening-stocks.post', $openingStock))
+            ->assertSessionHas('success');
+
+        $this->assertSame('posted', $openingStock->fresh()->status);
+        $this->assertDatabaseHas('stock_balances', [
+            'warehouse_id' => $warehouse->id,
+            'product_id' => $firstProduct->id,
+            'quantity' => 100,
+        ]);
+        $this->assertDatabaseHas('stock_balances', [
+            'warehouse_id' => $warehouse->id,
+            'product_id' => $secondProduct->id,
+            'quantity' => 50,
+        ]);
+    }
+
+    public function test_opening_stock_preview_rejects_product_that_already_has_a_movement(): void
+    {
+        $this->fakeLocalStorage();
+        $owner = User::factory()->create(['role' => UserRole::Owner]);
+        $warehouse = Warehouse::factory()->create(['code' => 'GDG-01', 'is_active' => true]);
+        $product = Product::factory()->create(['sku' => 'BAHAN-01', 'is_active' => true]);
+        StockMovement::factory()->create(['warehouse_id' => $warehouse->id, 'product_id' => $product->id]);
+        $date = today()->toDateString();
+        $file = UploadedFile::fake()->createWithContent(
+            'stok-awal.csv',
+            "tanggal_stok;kode_gudang;sku;jumlah;catatan\n{$date};{$warehouse->code};{$product->sku};100;Hitung fisik\n",
+        );
+
+        $response = $this->actingAs($owner)->post(route('admin.data-imports.preview'), [
+            'type' => 'opening_stocks',
+            'file' => $file,
+        ]);
+
+        $response->assertOk()
+            ->assertSee('1 baris perlu diperbaiki')
+            ->assertSee('Gunakan Penyesuaian Stok')
+            ->assertDontSee('Konfirmasi Impor');
+    }
+
+    public function test_cash_balance_import_creates_an_account_and_matching_opening_ledger(): void
+    {
+        $this->fakeLocalStorage();
+        $owner = User::factory()->create(['role' => UserRole::Owner]);
+        $date = today()->toDateString();
+        $file = UploadedFile::fake()->createWithContent(
+            'saldo-kas.csv',
+            "kode_akun;nama_akun;jenis;tanggal_saldo;saldo_awal;aktif\nBANK-BRI;Bank BRI;bank;{$date};10000000;ya\n",
+        );
+
+        $preview = $this->actingAs($owner)->post(route('admin.data-imports.preview'), [
+            'type' => 'cash_balances',
+            'file' => $file,
+        ]);
+
+        $preview->assertOk()->assertSee('1 baris valid');
+        $this->post(route('admin.data-imports.confirm', $preview->viewData('token')))
+            ->assertRedirect(route('admin.data-imports.index'));
+
+        $account = CashAccount::query()->where('code', 'BANK-BRI')->sole();
+        $transaction = CashTransaction::query()->where('cash_account_id', $account->id)->sole();
+        $this->assertSame('10000000.00', $account->balance);
+        $this->assertSame('10000000.00', $transaction->amount);
+        $this->assertSame('in', $transaction->direction);
+        $this->assertStringStartsWith('CASH-OPEN-', $transaction->reference_number);
+        $this->assertTrue($this->app->make(OperationalIntegrityService::class)->check()['healthy']);
+    }
+
+    public function test_opening_balances_cannot_be_imported_into_a_closed_period(): void
+    {
+        $this->fakeLocalStorage();
+        $owner = User::factory()->create(['role' => UserRole::Owner]);
+        AccountingPeriod::factory()->create(['period' => '2026-01', 'status' => 'closed']);
+        $file = UploadedFile::fake()->createWithContent(
+            'saldo-kas.csv',
+            "kode_akun;nama_akun;jenis;tanggal_saldo;saldo_awal;aktif\nBANK-BRI;Bank BRI;bank;2026-01-31;10000000;ya\n",
+        );
+
+        $response = $this->actingAs($owner)->post(route('admin.data-imports.preview'), [
+            'type' => 'cash_balances',
+            'file' => $file,
+        ]);
+
+        $response->assertOk()
+            ->assertSee('Periode 2026-01 sudah ditutup')
+            ->assertDontSee('Konfirmasi Impor');
+        $this->assertDatabaseMissing('cash_accounts', ['code' => 'BANK-BRI']);
     }
 }
