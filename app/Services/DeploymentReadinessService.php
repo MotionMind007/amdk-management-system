@@ -38,6 +38,7 @@ class DeploymentReadinessService
             $this->result('Scheduler', $this->schedule->events() !== [], count($this->schedule->events()).' tugas terdaftar.', 'Tidak ada tugas scheduler terdaftar.'),
             $this->binaryCheck('pg_dump', (string) config('operations.database_backup.pg_dump_binary')),
             $this->binaryCheck('psql', (string) config('operations.database_backup.psql_binary')),
+            $this->backupVerificationCredentialsCheck(),
             $this->offsiteBackupCheck(),
             app()->configurationIsCached()
                 ? $this->success('Optimasi Laravel', 'Konfigurasi sudah di-cache.')
@@ -173,6 +174,21 @@ class DeploymentReadinessService
 
             return $this->failure('Penyimpanan backup offsite', "Disk {$disk} tidak dapat diakses.");
         }
+    }
+
+    /** @return array{name: string, status: string, message: string} */
+    private function backupVerificationCredentialsCheck(): array
+    {
+        $username = config('operations.database_backup.verify_username');
+        $password = config('operations.database_backup.verify_password');
+        $configured = is_string($username) && $username !== '' && is_string($password) && $password !== '';
+
+        return $this->result(
+            'Akun verifikasi backup',
+            $configured,
+            'Kredensial PostgreSQL khusus verifikasi restore tersedia.',
+            'DB_BACKUP_VERIFY_USERNAME dan DB_BACKUP_VERIFY_PASSWORD wajib diisi.',
+        );
     }
 
     /** @return array{name: string, status: string, message: string} */

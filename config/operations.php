@@ -12,6 +12,8 @@ return [
     'database_backup' => [
         'pg_dump_binary' => env('DB_BACKUP_PG_DUMP_BINARY', 'pg_dump'),
         'psql_binary' => env('DB_BACKUP_PSQL_BINARY', 'psql'),
+        'verify_username' => env('DB_BACKUP_VERIFY_USERNAME'),
+        'verify_password' => env('DB_BACKUP_VERIFY_PASSWORD'),
         'offsite_disk' => env('DB_BACKUP_OFFSITE_DISK'),
     ],
 ];

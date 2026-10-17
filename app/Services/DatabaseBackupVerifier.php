@@ -133,7 +133,7 @@ class DatabaseBackupVerifier
     /** @return array{tables: int, rows: null, integrity_checks: int} */
     private function verifyPostgres(string $absolutePath): array
     {
-        $connection = DB::connection()->getConfig();
+        $connection = $this->postgresVerificationConnection(DB::connection()->getConfig());
         $database = 'backup_verify_'.now()->format('YmdHis').'_'.Str::lower(Str::random(6));
         $created = false;
 
@@ -165,6 +165,30 @@ class DatabaseBackupVerifier
                 $this->runPsql($connection, $maintenanceDatabase, ['--command=DROP DATABASE IF EXISTS "'.$database.'" WITH (FORCE)']);
             }
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $connection
+     * @return array<string, mixed>
+     */
+    private function postgresVerificationConnection(array $connection): array
+    {
+        $username = config('operations.database_backup.verify_username');
+        $password = config('operations.database_backup.verify_password');
+
+        if (! is_string($username) || $username === '') {
+            return $connection;
+        }
+
+        if (! is_string($password) || $password === '') {
+            throw new RuntimeException('DB_BACKUP_VERIFY_PASSWORD wajib diisi ketika akun khusus verifikasi backup digunakan.');
+        }
+
+        return [
+            ...$connection,
+            'username' => $username,
+            'password' => $password,
+        ];
     }
 
     /** @param array<string, mixed> $connection */

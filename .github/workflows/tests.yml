@@ -89,6 +89,8 @@ jobs:
           SESSION_SECURE_COOKIE: true
           DB_BACKUP_OFFSITE_DISK: backup_offsite
           DB_BACKUP_OFFSITE_PATH: /tmp/amdk-offsite-backups
+          DB_BACKUP_VERIFY_USERNAME: postgres
+          DB_BACKUP_VERIFY_PASSWORD: postgres
         run: |
           mkdir -p /tmp/amdk-offsite-backups
           php artisan system:check-deployment

@@ -53,6 +53,8 @@ class DeploymentReadinessTest extends TestCase
             'session.http_only' => true,
             'session.same_site' => 'lax',
             'operations.database_backup.offsite_disk' => 'offsite-test',
+            'operations.database_backup.verify_username' => 'backup_verifier',
+            'operations.database_backup.verify_password' => 'test-password',
         ]);
         $this->mock(ExecutableFinder::class, function (MockInterface $mock): void {
             $mock->shouldReceive('find')->twice()->andReturn('/usr/bin/postgresql-client');
