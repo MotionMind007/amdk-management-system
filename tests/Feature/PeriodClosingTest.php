@@ -12,12 +12,33 @@ use App\Services\AccountingPeriodService;
 use App\Services\PaymentService;
 use App\UserRole;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class PeriodClosingTest extends TestCase
 {
     use LazilyRefreshDatabase;
+
+    public function test_period_check_creates_an_open_marker_for_transaction_locking(): void
+    {
+        DB::transaction(function (): void {
+            app(AccountingPeriodService::class)->ensureOpen('2026-10-17');
+        });
+
+        $this->assertDatabaseHas(AccountingPeriod::class, [
+            'period' => '2026-10',
+            'status' => 'open',
+            'closed_by' => null,
+            'closed_at' => null,
+        ]);
+
+        $owner = User::factory()->create(['role' => UserRole::Owner]);
+        $this->actingAs($owner)
+            ->get(route('finance.periods.index'))
+            ->assertOk()
+            ->assertDontSee('Periode 2026-10');
+    }
 
     public function test_closed_period_rejects_payment_and_can_be_reopened(): void
     {

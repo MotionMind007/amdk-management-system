@@ -39,7 +39,9 @@ class DeploymentReadinessService
             $this->binaryCheck('pg_dump', (string) config('operations.database_backup.pg_dump_binary')),
             $this->binaryCheck('psql', (string) config('operations.database_backup.psql_binary')),
             $this->offsiteBackupCheck(),
-            $this->warning('Optimasi Laravel', app()->configurationIsCached() ? 'Konfigurasi sudah di-cache.' : 'Jalankan php artisan optimize pada proses deployment.'),
+            app()->configurationIsCached()
+                ? $this->success('Optimasi Laravel', 'Konfigurasi sudah di-cache.')
+                : $this->warning('Optimasi Laravel', 'Jalankan php artisan optimize pada proses deployment.'),
         ];
 
         $failures = collect($checks)->where('status', 'fail')->count();
@@ -183,6 +185,12 @@ class DeploymentReadinessService
     private function failure(string $name, string $message): array
     {
         return ['name' => $name, 'status' => 'fail', 'message' => $message];
+    }
+
+    /** @return array{name: string, status: string, message: string} */
+    private function success(string $name, string $message): array
+    {
+        return ['name' => $name, 'status' => 'pass', 'message' => $message];
     }
 
     /** @return array{name: string, status: string, message: string} */

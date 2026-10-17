@@ -14,7 +14,13 @@ class AccountingPeriodController extends Controller
 {
     public function index(): View
     {
-        return view('finance.periods.index', ['periods' => AccountingPeriod::query()->with('closer:id,name')->latest('period')->paginate(24)]);
+        return view('finance.periods.index', [
+            'periods' => AccountingPeriod::query()
+                ->whereNotNull('closed_by')
+                ->with('closer:id,name')
+                ->latest('period')
+                ->paginate(24),
+        ]);
     }
 
     public function store(StoreAccountingPeriodRequest $request, AccountingPeriodService $service, AuditService $audit): RedirectResponse

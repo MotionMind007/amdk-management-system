@@ -21,7 +21,7 @@
             <p class="relative z-10 text-sm font-semibold uppercase tracking-[0.16em] text-white/80">PT. AIR MINUM JAYAPURA ROBONGHOLO NANWANI</p>
             <div class="relative z-10 max-w-lg">
                 <p class="text-sm font-semibold uppercase tracking-[0.18em] text-sky-300">Sederhana · Cepat · Terpercaya</p>
-                <h1 class="mt-5 text-4xl font-semibold leading-tight">SISTEM OPERASIOAL & MANAGEMENT PABRIK AMDK DALAM SATU APLIKASI.</h1>
+                <h1 class="mt-5 text-4xl font-semibold leading-tight">SISTEM OPERASIONAL & MANAGEMENT PABRIK AMDK DALAM SATU APLIKASI.</h1>
                 <p class="mt-5 text-base leading-7 text-slate-300">Produksi, stok, penjualan, pembelian, dan keuangan sederhana dengan histori yang jelas.</p>
             </div>
             <p class="relative z-10 text-sm text-slate-300">Akses internal perusahaan</p>

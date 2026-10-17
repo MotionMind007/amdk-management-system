@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Services\DeploymentReadinessService;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -12,6 +13,17 @@ use Tests\TestCase;
 class DeploymentReadinessTest extends TestCase
 {
     use LazilyRefreshDatabase;
+
+    public function test_cached_configuration_is_reported_as_passing_instead_of_a_warning(): void
+    {
+        $this->app->instance('config_loaded_from_cache', true);
+
+        $result = app(DeploymentReadinessService::class)->check();
+        $optimization = collect($result['checks'])->firstWhere('name', 'Optimasi Laravel');
+
+        $this->assertSame('pass', $optimization['status']);
+        $this->assertSame('Konfigurasi sudah di-cache.', $optimization['message']);
+    }
 
     public function test_local_configuration_is_rejected_for_production_deployment(): void
     {

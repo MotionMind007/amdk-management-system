@@ -90,6 +90,30 @@ class DatabaseBackupService
         return $disk;
     }
 
+    public function pruneOlderThan(int $days): int
+    {
+        if ($days < 1) {
+            throw new RuntimeException('Retensi backup minimal satu hari.');
+        }
+
+        $cutoff = now()->subDays($days)->timestamp;
+        $paths = collect(Storage::disk('local')->files('backups'))
+            ->filter(fn (string $path): bool => preg_match('/\Abackups\/database-[a-zA-Z0-9._-]+\.sql\z/', $path) === 1)
+            ->filter(fn (string $path): bool => Storage::disk('local')->lastModified($path) < $cutoff)
+            ->values();
+        $offsiteDisk = $this->offsiteDisk();
+
+        foreach ($paths as $path) {
+            Storage::disk('local')->delete([$path, $path.'.verified.json']);
+
+            if ($offsiteDisk !== null) {
+                Storage::disk($offsiteDisk)->delete([$path, $path.'.verified.json']);
+            }
+        }
+
+        return $paths->count();
+    }
+
     public function offsiteDisk(): ?string
     {
         $disk = config('operations.database_backup.offsite_disk');

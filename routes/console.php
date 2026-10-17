@@ -10,7 +10,7 @@ Artisan::command('inspire', function () {
 
 Schedule::command('finance:send-due-reminders')->dailyAt('08:00')->withoutOverlapping();
 Schedule::command('system:prune-data-imports --hours=24')->hourly()->withoutOverlapping();
-Schedule::command('system:backup-database')
+Schedule::command('system:backup-database --verify --retention-days=30')
     ->dailyAt('01:00')
     ->environments(['production'])
     ->onOneServer()

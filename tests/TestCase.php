@@ -10,6 +10,13 @@ use Illuminate\Support\Str;
 
 abstract class TestCase extends BaseTestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->withoutVite();
+    }
+
     protected function fakeLocalStorage(): LocalFilesystemAdapter
     {
         $temporaryDisk = 'local-'.getmypid().'-'.Str::uuid();

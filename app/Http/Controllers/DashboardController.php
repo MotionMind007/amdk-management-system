@@ -15,7 +15,7 @@ class DashboardController extends Controller
     {
         /** @var User $user */
         $user = request()->user();
-        $todaySales = Sale::query()->whereDate('sale_date', today())->whereNot('status', 'draft')->sum('total');
+        $todaySales = Sale::query()->whereDate('sale_date', today())->whereNotIn('status', ['draft', 'cancelled'])->sum('total');
         $receivables = Sale::query()->sum('outstanding_amount');
         $payables = SupplierInvoice::query()->sum('outstanding_amount');
         $lowStockCount = StockBalance::query()->join('products', 'products.id', '=', 'stock_balances.product_id')->whereColumn('stock_balances.quantity', '<', 'products.minimum_stock')->where('products.is_active', true)->count();
@@ -34,7 +34,7 @@ class DashboardController extends Controller
 
         $tasks = collect();
         if ($user->hasPermission('purchasing.approve')) {
-            $tasks->push(['label' => 'PO menunggu persetujuan', 'count' => PurchaseOrder::query()->where('status', 'pending_approval')->count(), 'route' => 'purchasing.index']);
+            $tasks->push(['label' => 'PO menunggu persetujuan', 'count' => PurchaseOrder::query()->where('status', 'draft')->count(), 'route' => 'purchasing.index']);
         }
         if ($user->hasPermission('purchasing.receive')) {
             $tasks->push(['label' => 'PO menunggu penerimaan', 'count' => PurchaseOrder::query()->whereIn('status', ['approved', 'partially_received'])->count(), 'route' => 'purchasing.index']);
@@ -49,7 +49,7 @@ class DashboardController extends Controller
         return view('dashboard', [
             'stats' => $stats,
             'tasks' => $tasks->filter(fn (array $task): bool => $task['count'] > 0),
-            'latestSales' => $user->hasPermission('sales.view') ? Sale::query()->with('customer:id,name')->whereNot('status', 'draft')->latest('sale_date')->latest('id')->limit(5)->get() : collect(),
+            'latestSales' => $user->hasPermission('sales.view') ? Sale::query()->with('customer:id,name')->whereNotIn('status', ['draft', 'cancelled'])->latest('sale_date')->latest('id')->limit(5)->get() : collect(),
             'lowStocks' => $user->hasPermission('inventory.view') ? StockBalance::query()->select('stock_balances.*')->join('products', 'products.id', '=', 'stock_balances.product_id')->whereColumn('stock_balances.quantity', '<', 'products.minimum_stock')->where('products.is_active', true)->with(['product.unit:id,code', 'warehouse:id,name'])->orderBy('stock_balances.quantity')->limit(5)->get() : collect(),
             'canViewSales' => $user->hasPermission('sales.view'),
             'canViewInventory' => $user->hasPermission('inventory.view'),

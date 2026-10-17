@@ -90,12 +90,39 @@ class DatabaseBackupTest extends TestCase
         Storage::fake('offsite-test');
         config(['operations.database_backup.offsite_disk' => 'offsite-test']);
 
-        $this->artisan('system:backup-database')
+        $this->artisan('system:backup-database', ['--verify' => true, '--retention-days' => 30])
             ->expectsOutputToContain('berhasil dibuat')
             ->expectsOutputToContain('berhasil disalin ke disk offsite offsite-test')
+            ->expectsOutputToContain('Restore backup terverifikasi')
+            ->expectsOutputToContain('Retensi 30 hari diterapkan')
             ->assertSuccessful();
 
-        $this->assertCount(1, Storage::disk('local')->files('backups'));
-        $this->assertCount(1, Storage::disk('offsite-test')->files('backups'));
+        $this->assertCount(2, Storage::disk('local')->files('backups'));
+        $this->assertCount(2, Storage::disk('offsite-test')->files('backups'));
+    }
+
+    public function test_backup_retention_removes_old_dump_and_verification_metadata_from_both_disks(): void
+    {
+        $this->fakeLocalStorage();
+        Storage::fake('offsite-test');
+        config(['operations.database_backup.offsite_disk' => 'offsite-test']);
+        $oldPath = 'backups/database-20260801-010000-old.sql';
+        $recentPath = 'backups/database-20261016-010000-recent.sql';
+
+        foreach (['local', 'offsite-test'] as $disk) {
+            Storage::disk($disk)->put($oldPath, 'old backup');
+            Storage::disk($disk)->put($oldPath.'.verified.json', '{}');
+            Storage::disk($disk)->put($recentPath, 'recent backup');
+        }
+        touch(Storage::disk('local')->path($oldPath), now()->subDays(31)->timestamp);
+
+        $pruned = app(DatabaseBackupService::class)->pruneOlderThan(30);
+
+        $this->assertSame(1, $pruned);
+        foreach (['local', 'offsite-test'] as $disk) {
+            Storage::disk($disk)->assertMissing($oldPath);
+            Storage::disk($disk)->assertMissing($oldPath.'.verified.json');
+            Storage::disk($disk)->assertExists($recentPath);
+        }
     }
 }

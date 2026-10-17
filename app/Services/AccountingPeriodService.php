@@ -16,8 +16,9 @@ class AccountingPeriodService
     public function ensureOpen(CarbonInterface|string $date): void
     {
         $period = date_create((string) $date)->format('Y-m');
+        $accountingPeriod = $this->lockPeriod($period);
 
-        if (AccountingPeriod::query()->where('period', $period)->where('status', 'closed')->exists()) {
+        if ($accountingPeriod->status === 'closed') {
             throw ValidationException::withMessages(['date' => "Periode {$period} sudah ditutup. Transaksi pada periode ini tidak dapat diposting atau diubah."]);
         }
     }
@@ -25,6 +26,7 @@ class AccountingPeriodService
     public function close(string $period, ?string $notes, User $user): AccountingPeriod
     {
         return DB::transaction(function () use ($period, $notes, $user): AccountingPeriod {
+            $accountingPeriod = $this->lockPeriod($period);
             $integrity = $this->integrity->check();
 
             if (! $integrity['healthy']) {
@@ -58,17 +60,42 @@ class AccountingPeriodService
                 ]);
             }
 
-            return AccountingPeriod::query()->updateOrCreate(
-                ['period' => $period],
-                ['status' => 'closed', 'notes' => $notes, 'closed_by' => $user->id, 'closed_at' => now(), 'reopened_by' => null, 'reopened_at' => null],
-            );
+            $accountingPeriod->update([
+                'status' => 'closed',
+                'notes' => $notes,
+                'closed_by' => $user->id,
+                'closed_at' => now(),
+                'reopened_by' => null,
+                'reopened_at' => null,
+            ]);
+
+            return $accountingPeriod;
         });
     }
 
     public function reopen(AccountingPeriod $accountingPeriod, User $user): AccountingPeriod
     {
-        $accountingPeriod->update(['status' => 'open', 'reopened_by' => $user->id, 'reopened_at' => now()]);
+        return DB::transaction(function () use ($accountingPeriod, $user): AccountingPeriod {
+            $accountingPeriod = AccountingPeriod::query()
+                ->whereKey($accountingPeriod->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+            $accountingPeriod->update(['status' => 'open', 'reopened_by' => $user->id, 'reopened_at' => now()]);
 
-        return $accountingPeriod;
+            return $accountingPeriod;
+        });
+    }
+
+    private function lockPeriod(string $period): AccountingPeriod
+    {
+        AccountingPeriod::query()->firstOrCreate(
+            ['period' => $period],
+            ['status' => 'open'],
+        );
+
+        return AccountingPeriod::query()
+            ->where('period', $period)
+            ->lockForUpdate()
+            ->firstOrFail();
     }
 }
