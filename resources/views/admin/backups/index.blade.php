@@ -5,7 +5,7 @@
             <h1 class="mt-1 text-2xl font-semibold">Backup Database</h1>
             <p class="mt-2 text-sm text-slate-500">Simpan salinan data sebelum deployment atau perubahan besar.</p>
         </div>
-        <form method="POST" action="{{ route('admin.backups.store') }}" onsubmit="return confirm('Buat backup database sekarang?')">
+        <form method="POST" action="{{ route('admin.backups.store') }}" data-confirm="Buat backup database sekarang?">
             @csrf
             <x-ui.button type="submit">Buat Backup</x-ui.button>
         </form>

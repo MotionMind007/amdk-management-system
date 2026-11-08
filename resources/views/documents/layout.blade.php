@@ -7,6 +7,7 @@
     <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
     <link rel="apple-touch-icon" href="{{ asset('images/company-favicon.png') }}">
     <title>@yield('title')</title>
+    @vite('resources/js/app.js')
     <style>
         @page {
             size: 9.5in 5.5in;
@@ -244,7 +245,7 @@
         </div>
         <div class="preview-toolbar__actions">
             <a class="button" href="@yield('back-url')">Kembali</a>
-            <button class="button button--primary" type="button" onclick="window.print()">@yield('print-label')</button>
+            <button class="button button--primary" type="button" data-print>@yield('print-label')</button>
         </div>
     </div>
 

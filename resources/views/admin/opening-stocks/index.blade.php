@@ -29,7 +29,7 @@
                                 @if ($openingStock->status === 'draft')
                                     <div class="flex justify-end gap-2">
                                         <a href="{{ route('admin.opening-stocks.edit', $openingStock) }}" class="inline-flex min-h-10 items-center rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-700">Edit</a>
-                                        <form method="POST" action="{{ route('admin.opening-stocks.post', $openingStock) }}" onsubmit="return confirm('Posting stok awal? Data tidak dapat diedit setelah diposting.')">
+                                        <form method="POST" action="{{ route('admin.opening-stocks.post', $openingStock) }}" data-confirm="Posting stok awal? Data tidak dapat diedit setelah diposting.">
                                             @csrf
                                             <x-ui.button type="submit">Posting</x-ui.button>
                                         </form>

@@ -43,7 +43,7 @@
                                 @if (auth()->user()->hasPermission('inventory.manage'))
                                     <div class="flex justify-end gap-2">
                                         <a href="{{ route('products.edit', $product) }}" class="inline-flex min-h-10 items-center rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Edit</a>
-                                        <form method="POST" action="{{ route('products.destroy', $product) }}" onsubmit="return confirm('Hapus produk ini dari master? Histori transaksi tetap disimpan.')">
+                                        <form method="POST" action="{{ route('products.destroy', $product) }}" data-confirm="Hapus produk ini dari master? Histori transaksi tetap disimpan.">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="inline-flex min-h-10 items-center rounded-lg border border-red-200 px-3 text-sm font-semibold text-red-600 hover:bg-red-50">Hapus</button>
@@ -73,7 +73,7 @@
                     @if (auth()->user()->hasPermission('inventory.manage'))
                         <div class="mt-4 grid grid-cols-2 gap-2">
                             <a href="{{ route('products.edit', $product) }}" class="inline-flex min-h-11 items-center justify-center rounded-lg bg-slate-100 px-3 text-sm font-semibold">Edit produk</a>
-                            <form method="POST" action="{{ route('products.destroy', $product) }}" onsubmit="return confirm('Hapus produk ini dari master? Histori transaksi tetap disimpan.')">
+                            <form method="POST" action="{{ route('products.destroy', $product) }}" data-confirm="Hapus produk ini dari master? Histori transaksi tetap disimpan.">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="min-h-11 w-full rounded-lg border border-red-200 px-3 text-sm font-semibold text-red-600">Hapus</button>

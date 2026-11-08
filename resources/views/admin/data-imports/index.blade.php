@@ -49,7 +49,7 @@
                     <p class="mt-1 text-sm text-slate-500">{{ $preview['valid_count'] }} baris valid · {{ $preview['invalid_count'] }} baris perlu diperbaiki.</p>
                 </div>
                 @if ($preview['invalid_count'] === 0 && $preview['errors'] === [])
-                    <form method="POST" action="{{ route('admin.data-imports.confirm', $token) }}" onsubmit="return confirm('Impor {{ $preview['valid_count'] }} data baru sekarang?')">
+                    <form method="POST" action="{{ route('admin.data-imports.confirm', $token) }}" data-confirm="Impor {{ $preview['valid_count'] }} data baru sekarang?">
                         @csrf
                         <x-ui.button type="submit">Konfirmasi Impor</x-ui.button>
                     </form>

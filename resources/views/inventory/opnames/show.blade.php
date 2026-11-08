@@ -12,7 +12,7 @@
                 <a href="{{ route('inventory.opnames.edit', $stockOpname) }}" class="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700">Edit Draft</a>
             @endif
             @if ($stockOpname->status === 'draft' && auth()->user()->hasPermission('system.manage'))
-                <form method="POST" action="{{ route('inventory.opnames.post', $stockOpname) }}" onsubmit="return confirm('Posting stok opname? Selisih akan langsung menyesuaikan saldo stok dan data tidak dapat diedit lagi.')">
+                <form method="POST" action="{{ route('inventory.opnames.post', $stockOpname) }}" data-confirm="Posting stok opname? Selisih akan langsung menyesuaikan saldo stok dan data tidak dapat diedit lagi.">
                     @csrf
                     <x-ui.button type="submit">Posting Stok Opname</x-ui.button>
                 </form>

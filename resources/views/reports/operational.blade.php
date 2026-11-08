@@ -1,7 +1,7 @@
 <x-app-layout :title="$report['title']" module="reports" :module-data="config('modules.reports')">
     <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between print:hidden">
         <div><p class="text-sm font-semibold text-brand-700">Laporan Operasional</p><h1 class="mt-1 text-2xl font-semibold">{{ $report['title'] }}</h1><p class="mt-2 text-sm text-slate-500">Data terposting pada periode yang dipilih.</p></div>
-        <div class="flex flex-wrap gap-2"><button type="button" onclick="window.print()" class="inline-flex min-h-11 items-center rounded-lg border border-slate-300 px-4 text-sm font-semibold text-slate-700">Cetak</button><a href="{{ route('reports.operational.export', ['type' => $type] + request()->query()) }}" class="inline-flex min-h-11 items-center rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white">Unduh CSV</a></div>
+        <div class="flex flex-wrap gap-2"><button type="button" data-print class="inline-flex min-h-11 items-center rounded-lg border border-slate-300 px-4 text-sm font-semibold text-slate-700">Cetak</button><a href="{{ route('reports.operational.export', ['type' => $type] + request()->query()) }}" class="inline-flex min-h-11 items-center rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white">Unduh CSV</a></div>
     </div>
     <form method="GET" class="mt-6 grid gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-5 print:hidden">
         <x-ui.input label="Tanggal Mulai" name="start_date" type="date" :value="$report['start_date']" required />

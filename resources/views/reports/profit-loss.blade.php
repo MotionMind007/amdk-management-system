@@ -5,7 +5,7 @@
             <h1 class="mt-1 text-2xl font-semibold text-slate-900">Laba Rugi Sederhana</h1>
             <p class="mt-2 text-sm text-slate-500">Ringkasan pendapatan dan beban operasional perusahaan berdasarkan periode.</p>
         </div>
-        <button type="button" onclick="window.print()" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 print:hidden">
+        <button type="button" data-print class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 print:hidden">
             Cetak Laporan
         </button>
     </div>

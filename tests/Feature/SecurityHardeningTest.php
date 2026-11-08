@@ -150,6 +150,8 @@ class SecurityHardeningTest extends TestCase
         $response = $this->get('https://localhost/login');
 
         $response->assertHeader('Content-Security-Policy');
+        $this->assertStringContainsString("script-src 'self'", (string) $response->headers->get('Content-Security-Policy'));
+        $this->assertStringNotContainsString("script-src 'self' 'unsafe-inline'", (string) $response->headers->get('Content-Security-Policy'));
         $response->assertHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     }
 
