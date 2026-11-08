@@ -15,3 +15,9 @@ Schedule::command('system:backup-database --verify --retention-days=30')
     ->environments(['production'])
     ->onOneServer()
     ->withoutOverlapping(180);
+
+Schedule::command('system:monitor-health')
+    ->everyThirtyMinutes()
+    ->environments(['production'])
+    ->onOneServer()
+    ->withoutOverlapping(30);

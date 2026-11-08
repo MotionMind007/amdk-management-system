@@ -16,4 +16,8 @@ return [
         'verify_password' => env('DB_BACKUP_VERIFY_PASSWORD'),
         'offsite_disk' => env('DB_BACKUP_OFFSITE_DISK'),
     ],
+    'system_monitor' => [
+        'backup_max_age_hours' => (int) env('SYSTEM_MONITOR_BACKUP_MAX_AGE_HOURS', 30),
+        'disk_free_percent_threshold' => (int) env('SYSTEM_MONITOR_DISK_FREE_PERCENT_THRESHOLD', 15),
+    ],
 ];
