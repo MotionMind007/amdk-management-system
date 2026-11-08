@@ -35,7 +35,7 @@
                         <td class="px-5 py-4"><x-ui.badge :tone="$employee->status === 'active' ? 'green' : 'gray'">{{ $employee->status === 'active' ? 'Aktif' : 'Tidak aktif' }}</x-ui.badge></td>
                         <td class="px-5 py-4 text-right">
                             @if ($employee->user === null || auth()->user()->role->canAssign($employee->user->role))
-                                <a href="{{ route('employees.edit', $employee) }}" class="font-semibold text-brand-700">Edit</a>
+                                <div class="inline-flex items-center gap-3"><a href="{{ route('employees.edit', $employee) }}" class="font-semibold text-brand-700">Edit</a>@if ($employee->user === null || ! auth()->user()->is($employee->user))<form method="POST" action="{{ route('employees.destroy', $employee) }}" data-confirm="Hapus data karyawan {{ $employee->name }}? Akses login terkait akan dinonaktifkan dan histori transaksi tetap tersimpan.">@csrf @method('DELETE')<button type="submit" class="font-semibold text-red-600 hover:text-red-700">Hapus</button></form>@endif</div>
                             @else
                                 <span class="text-xs text-slate-400">Dilindungi</span>
                             @endif
@@ -61,7 +61,7 @@
                     <div><dt class="text-xs text-slate-500">Tanggal masuk</dt><dd class="mt-1 text-slate-700">{{ $employee->join_date?->format('d/m/Y') ?? 'Belum diisi' }}</dd></div>
                 </dl>
                 @if ($employee->user === null || auth()->user()->role->canAssign($employee->user->role))
-                    <a href="{{ route('employees.edit', $employee) }}" class="mt-4 block rounded-lg bg-slate-100 px-3 py-2 text-center text-sm font-semibold text-slate-700">Edit data</a>
+                    <div class="mt-4 grid grid-cols-2 gap-2"><a href="{{ route('employees.edit', $employee) }}" class="rounded-lg bg-slate-100 px-3 py-2 text-center text-sm font-semibold text-slate-700">Edit data</a>@if ($employee->user === null || ! auth()->user()->is($employee->user))<form method="POST" action="{{ route('employees.destroy', $employee) }}" data-confirm="Hapus data karyawan {{ $employee->name }}? Akses login terkait akan dinonaktifkan dan histori transaksi tetap tersimpan.">@csrf @method('DELETE')<button type="submit" class="w-full rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">Hapus</button></form>@endif</div>
                 @else
                     <p class="mt-4 rounded-lg bg-slate-50 px-3 py-2 text-center text-xs font-medium text-slate-400">Akun dilindungi</p>
                 @endif

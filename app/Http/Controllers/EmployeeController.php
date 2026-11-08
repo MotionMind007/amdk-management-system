@@ -9,6 +9,7 @@ use App\Services\AuditService;
 use App\Services\PrivilegedAccountGuard;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
@@ -149,5 +150,34 @@ class EmployeeController extends Controller
         }
 
         return redirect()->route('employees.index')->with('success', 'Data karyawan berhasil diperbarui.');
+    }
+
+    public function destroy(Request $request, Employee $employee, AuditService $auditService, PrivilegedAccountGuard $privilegedAccounts): RedirectResponse
+    {
+        $employee->load('user');
+        $user = $employee->user;
+
+        abort_if($user !== null && $request->user()->is($user), 422, 'Anda tidak dapat menghapus data karyawan untuk akun sendiri.');
+        abort_if($user !== null && ! $request->user()->role->canAssign($user->role), 403);
+
+        DB::transaction(function () use ($request, $employee, $user, $auditService, $privilegedAccounts): void {
+            $oldEmployeeValues = $employee->toArray();
+
+            if ($user !== null) {
+                $oldUserValues = $user->toArray();
+                $privilegedAccounts->ensureCanChange($user, $user->role, false);
+                $user->update(['is_active' => false]);
+                $auditService->record($request, 'DEACTIVATE', 'User', $user, Arr::except($oldUserValues, ['password']), Arr::except($user->fresh()->toArray(), ['password']), "Menonaktifkan akses login karyawan {$employee->name} saat data karyawan dihapus.");
+            }
+
+            $employee->delete();
+            $auditService->record($request, 'DELETE', 'Employee', $employee, $oldEmployeeValues, description: "Menghapus data karyawan {$employee->name}.");
+        });
+
+        if ($employee->photo_path !== null) {
+            Storage::disk('public')->delete($employee->photo_path);
+        }
+
+        return redirect()->route('employees.index')->with('success', 'Data karyawan berhasil dihapus. Akses login terkait dinonaktifkan.');
     }
 }

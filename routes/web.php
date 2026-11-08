@@ -135,7 +135,7 @@ Route::middleware(['auth', 'active', 'auth.session'])->group(function (): void {
     });
 
     Route::resource('employees', EmployeeController::class)
-        ->except(['show', 'destroy'])
+        ->except('show')
         ->middleware('permission:employees.manage');
 
     Route::get('/production', [ProductionController::class, 'index'])->middleware('permission:production.view')->name('production.index');
